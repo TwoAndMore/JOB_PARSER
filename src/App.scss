@@ -1,0 +1,31 @@
+@import "styles/utils/reset.scss";
+@import "styles/utils/_vars.scss";
+@import "styles/utils/_mixins.scss";
+
+html, body, #root { height: 100%; }
+
+body {
+  &::-webkit-scrollbar {
+    height: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #181a20;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #3a3d57;
+    border-radius: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #505375;
+  }
+
+  scrollbar-color: #3a3d57 #181a20;
+  scrollbar-width: thin;
+
+  background-color: #181a20;
+  color: #f1f1f1;
+  font-family: 'Segoe UI', sans-serif;
+}

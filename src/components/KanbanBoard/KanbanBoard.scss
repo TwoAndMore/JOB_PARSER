@@ -1,0 +1,421 @@
+/* Page wrapper: header above the board */
+.kanban-page {
+  /* CSS variables */
+  --bg: #181a20;
+  --text: #f1f1f1;
+
+  /* layout */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+
+  /* spacing */
+  /* (none) */
+
+  /* visuals */
+  background: var(--bg);
+  color: var(--text);
+
+  /* interactions */
+  /* (none) */
+
+  /* Header with global search */
+  .kanban__header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    margin: 0;
+    padding: 0.5rem 1rem 0.75rem;
+
+    background: linear-gradient(180deg, rgba(24, 26, 32, 1) 0%, rgba(24, 26, 32, 0.85) 100%);
+    backdrop-filter: blur(2px);
+
+    .kanban__brand {
+      /* layout */
+      display: inline-block;
+      white-space: nowrap;
+
+      /* spacing */
+      margin: 0;
+      padding: 0.4rem 0.6rem;
+
+      /* visuals */
+      background: rgba(157, 166, 255, 0.1);
+      border: 1px solid rgba(157, 166, 255, 0.2);
+      border-radius: 10px;
+
+      /* text */
+      color: #b5bcff;
+      font-weight: 900;
+      letter-spacing: 0.4px;
+    }
+
+    .kanban__search {
+      /* layout */
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      /* spacing */
+      margin: 0;
+      padding: 0.5rem 0.75rem;
+
+      /* visuals */
+      background: #1f222e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      min-width: 320px;
+
+      .kanban__search-icon {
+        opacity: 0.85;
+      }
+
+      .kanban__search-input {
+        /* layout */
+        display: block;
+        width: 100%;
+
+        /* visuals */
+        background: transparent;
+        border: none;
+        outline: none;
+
+        /* text */
+        color: var(--text);
+        font-size: 0.95rem;
+      }
+    }
+
+    .kanban__hint {
+      /* layout */
+      display: inline-block;
+      white-space: nowrap;
+
+      /* spacing */
+      margin: 0;
+      padding: 0.35rem 0.6rem;
+
+      /* visuals */
+      border: 1px dashed rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+
+      /* text */
+      color: #cfd2ff;
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+  }
+}
+
+/* ===== Board track ===== */
+.kanban {
+  /* CSS variables */
+  --bg: #181a20;
+  --text: #f1f1f1;
+  --muted: #c9cbd6;
+  --col-bg: #232634;
+  --col-bg-hover: #2d3040;
+  --stroke: rgba(255, 255, 255, 0.06);
+
+  /* layout */
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-sizing: border-box;
+
+  /* spacing */
+  margin: 0;
+  padding: 0 1rem 1rem;
+
+  /* visuals */
+  background: var(--bg);
+  color: var(--text);
+
+  /* scrollbar (horizontal) */
+  scrollbar-width: thin;
+  scrollbar-color: #3b3e55 #161820;
+
+  &::-webkit-scrollbar {
+    height: 10px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #161820;
+    border-radius: 10px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #3b3e55;
+    border-radius: 10px;
+    border: 2px solid #161820;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #4a4e72;
+  }
+
+  /* ===== Column ===== */
+  &__column {
+    /* layout */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 340px;
+    max-height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+
+    /* spacing */
+    margin: 0;
+
+    /* visuals */
+    background: var(--col-bg);
+    border: 1px solid var(--stroke);
+    border-radius: 14px;
+
+    /* effects */
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+
+    &:hover {
+      border-color: rgba(127, 140, 255, 0.18);
+      background: var(--col-bg-hover);
+    }
+
+    /* left accent */
+    &::before {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 6px;
+
+      /* spacing/size */
+      width: 4px;
+      border-radius: 4px;
+
+      /* visuals */
+      content: "";
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
+      opacity: 0.6;
+
+      /* interactions */
+      pointer-events: none;
+    }
+  }
+
+  /* color accents per column */
+  &__column--new::before {
+    background: linear-gradient(180deg, #5cffb4, #25e39b);
+  }
+  &__column--cv-sent::before {
+    background: linear-gradient(180deg, #8fd2ff, #5aa7ff);
+  }
+  &__column--followed-up::before {
+    background: linear-gradient(180deg, #ffd36e, #ffb84d);
+  }
+  &__column--interview::before {
+    background: linear-gradient(180deg, #b69cff, #8a6cff);
+  }
+  &__column--refusal::before {
+    background: linear-gradient(180deg, #ff7a7a, #ff5252);
+  }
+  &__column--offer::before {
+    background: linear-gradient(180deg, #7dff9d, #4fe479);
+  }
+  &__column--archive::before {
+    background: linear-gradient(180deg, #9aa3b0, #7b8391);
+  }
+
+  /* ===== Column header (sticky) ===== */
+  &__column-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.6rem;
+
+    margin: 0;
+    padding: 0.75rem 1rem;
+
+    background: linear-gradient(180deg, rgba(32, 35, 48, 0.98), rgba(35, 38, 52, 0.95));
+    border-bottom: 1px solid var(--stroke);
+    backdrop-filter: blur(2px);
+  }
+
+  &__column-title {
+    /* layout */
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+
+    /* spacing */
+    margin: 0;
+
+    /* text */
+    color: #9da6ff;
+    font-size: 0.98rem;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
+
+  &__column-icon {
+    display: inline-flex;
+    align-items: center;
+    font-size: 1rem;
+  }
+
+  &__column-count {
+    /* layout */
+    display: inline-grid;
+    place-items: center;
+    min-width: 34px;
+    height: 26px;
+
+    /* spacing */
+    margin: 0;
+    padding: 0 0.5rem;
+
+    /* visuals */
+    background: #b5bcff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+
+    /* text */
+    color: #111321;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  /* ===== List inside column ===== */
+  &__list {
+    /* layout */
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-height: 340px;
+
+    /* spacing */
+    margin: 0;
+    padding: 0.75rem 1rem 1.4rem 1rem;
+
+    /* visuals */
+    /* (none) */
+
+    /* drop tail */
+    &::after {
+      /* layout */
+      display: block;
+
+      /* spacing/size */
+      content: "";
+      height: 110px;
+
+      /* interactions */
+      pointer-events: none;
+    }
+
+    /* disabled DnD modifier */
+    &--disabled {
+      opacity: 0.95;
+      cursor: not-allowed;
+
+      * {
+        cursor: not-allowed !important;
+      }
+    }
+  }
+
+  /* ===== Empty state ===== */
+  &__empty {
+    /* layout */
+    display: grid;
+    place-items: center;
+    min-height: 120px;
+    text-align: center;
+    gap: 0.35rem;
+    user-select: none;
+
+    /* spacing */
+    margin: 0;
+    padding: 0;
+
+    /* visuals */
+    background: rgba(157, 166, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+
+    &-icon {
+      font-size: 1.25rem;
+      opacity: 0.9;
+    }
+    &-title {
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+    &-sub {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+    &-hand {
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+  }
+
+  /* ===== DnD helper states (SortableJS) ===== */
+  .is-ghost {
+    opacity: 0.5;
+    transform: rotate(1deg) scale(0.98);
+  }
+  .is-chosen {
+    z-index: 3;
+  }
+  .is-dragging {
+    cursor: grabbing !important;
+    z-index: 3;
+  }
+}
+
+/* ===== Mobile tweaks ===== */
+@media (max-width: 480px) {
+  .kanban {
+    /* layout */
+    gap: 0.75rem;
+
+    /* spacing */
+    padding: 0.75rem;
+
+    &__column {
+      flex-basis: 300px;
+      border-radius: 12px;
+    }
+
+    &__column-title {
+      font-size: 0.95rem;
+    }
+  }
+
+  .kanban-page .kanban__header {
+    /* spacing */
+    padding: 0.5rem 0.75rem 0.75rem;
+
+    .kanban__search {
+      min-width: 220px;
+    }
+  }
+}
