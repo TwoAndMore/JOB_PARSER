@@ -15,8 +15,7 @@ type Props = {
 const KanbanCard: React.FC<Props> = ({ id, title, company, date, location, link, onClick }: Props) => (
   <div className="kanban-card" data-id={id} onClick={onClick} role="button" tabIndex={0}>
     <div className="kanban-card__top">
-      <h3 className="kanban-card__title">{title}</h3>
-
+      <h3 className="kanban-card__title" title={title}>{title}</h3>
       {link && (
         <a
           className="kanban-card__link"
@@ -26,7 +25,7 @@ const KanbanCard: React.FC<Props> = ({ id, title, company, date, location, link,
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
         >
-          <FaExternalLinkAlt/>
+          <FaExternalLinkAlt />
         </a>
       )}
     </div>
@@ -34,28 +33,27 @@ const KanbanCard: React.FC<Props> = ({ id, title, company, date, location, link,
     <div className="kanban-card__chips">
       {company && (
         <span className="kanban-card__chip">
-            <FaBuilding className="kanban-card__chip-icon"/>
-          {company}
-          </span>
+          <FaBuilding className="kanban-card__chip-icon" />
+          <span className="kanban-card__chip-text">{company}</span>
+        </span>
       )}
     </div>
 
     <div className="kanban-card__meta">
-      {date && (
-        <div className="kanban-card__meta-item">
-          <FaCalendarAlt className="kanban-card__meta-icon"/>
-          <span className="kanban-card__meta-text">{date}</span>
-        </div>
-      )}
-
       {location && (
         <div className="kanban-card__meta-item">
-          <FaMapMarkerAlt className="kanban-card__meta-icon"/>
-          <span className="kanban-card__meta-text">{location}</span>
+          <FaMapMarkerAlt className="kanban-card__meta-icon" />
+          <span className="kanban-card__meta-text kanban-card__meta-text--wrap">{location}</span>
+        </div>
+      )}
+      {date && (
+        <div className="kanban-card__meta-item">
+          <FaCalendarAlt className="kanban-card__meta-icon" />
+          <span className="kanban-card__meta-text">{date}</span>
         </div>
       )}
     </div>
   </div>
 );
 
-export default KanbanCard
+export default KanbanCard;
