@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { ReactSortable } from 'react-sortablejs';
 import type { SortableEvent } from 'sortablejs';
 import {
@@ -165,6 +172,13 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
 
     return columns.map((c) => ({ ...c, jobs: c.jobs.filter(match) }));
   }, [columns, query]);
+
+  // Per-column counts (affected by search)
+  const counts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const c of filteredColumns) map[c.name] = c.jobs.length;
+    return map;
+  }, [filteredColumns]);
 
   const dndDisabled = focusMode || query.trim().length > 0;
 
@@ -362,6 +376,29 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
     setIsModalOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (!focusMode) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (!currentJob) return;
+
+      // Navigation
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goNext();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goPrev();
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [focusMode, currentJob, goNext, goPrev, moveJobToStatus]);
+
   return (
     <div className="kanban-page">
       {/* Header */}
@@ -379,8 +416,8 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
           />
         </div>
 
-        <div className="kanban__hint" style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
-          <label style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', cursor: 'pointer' }}>
+        <div className="kanban__controls">
+          <label className="kanban__toggle">
             <input
               type="checkbox"
               checked={focusMode}
@@ -388,33 +425,6 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
             />
             Focus mode
           </label>
-
-          <select
-            value={focusColumn}
-            onChange={(e) => {
-              setFocusColumn(e.target.value);
-              setFocusIndex(0);
-            }}
-            style={{
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.18)',
-              color: '#cfd2ff',
-              borderRadius: 8,
-              padding: '0.25rem 0.5rem',
-            }}
-          >
-            {COLUMN_NAMES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-
-          {focusMode && (
-            <span>
-              {focusList.length ? `${focusIndex + 1}/${focusList.length}` : '0/0'}
-            </span>
-          )}
         </div>
 
         {!focusMode && query.trim().length > 0 && (
@@ -424,9 +434,30 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         <div className="kanban__brand">Discord: amiduck</div>
       </div>
 
+      {/* Focus-mode badge bar (per-column counts & quick switch) */}
+      {focusMode && (
+        <div className="focus-stats">
+          {COLUMN_NAMES.map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={`focus-stats__item ${n === focusColumn ? 'is-active' : ''}`}
+              onClick={() => {
+                setFocusColumn(n);
+                setFocusIndex(0);
+              }}
+              title={`${n} (${counts[n] ?? 0})`}
+            >
+              <span className="focus-stats__name">{n}</span>
+              <span className="focus-stats__count">{counts[n] ?? 0}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Focus Mode: one card + quick actions */}
       {focusMode ? (
-        <div className="kanban" style={{ paddingTop: '0.75rem' }}>
+        <div className="kanban" style={{ paddingTop: '0.5rem' }}>
           <div
             className={`kanban__column ${statusMod(focusColumn)}`}
             style={{ flex: '1 1 520px', maxWidth: 760, margin: '0 auto' }}
@@ -436,9 +467,19 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                 {focusColumn}
                 <span className="kanban__column-icon">{iconByName(focusColumn)}</span>
               </h2>
-              <span className="kanban__column-count">
-                {filteredColumns.find((c) => c.name === focusColumn)?.jobs.length ?? 0}
-              </span>
+
+              <div style={{display:'inline-flex', gap: '0.4rem', alignItems:'center'}}>
+                <span className="kanban__column-count">{counts[focusColumn] ?? 0}</span>
+                {focusMode && (
+                  <span
+                    className="kanban__column-count"
+                    aria-live="polite"
+                    style={{opacity:.9, background:'#3b3e55', color:'#fff'}}
+                  >
+                    {focusList.length ? `${focusIndex + 1}/${focusList.length}` : '0/0'}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="kanban__list">
@@ -566,7 +607,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                 }
                 disabled={dndDisabled}
                 animation={col.jobs.length >= 200 ? 0 : 120}
-                easing='cubic-bezier(.2,.7,.3,1)'
+                easing="cubic-bezier(.2,.7,.3,1)"
                 className={`kanban__list${dndDisabled ? ' kanban__list--disabled' : ''}`}
                 onAdd={(evt) => {
                   if (!dndDisabled) handleAdd(evt as SortableEvent, colIndex);
@@ -586,27 +627,27 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                 scroll={true}
                 scrollSensitivity={60}
                 scrollSpeed={12}
-                ghostClass='is-ghost'
-                chosenClass='is-chosen'
-                dragClass='is-dragging'
+                ghostClass="is-ghost"
+                chosenClass="is-chosen"
+                dragClass="is-dragging"
               >
                 {col.jobs.length === 0 ? (
                   isDragging ? (
-                    <div className='kanban__empty'>
-                      <div className='kanban__empty-title'>Drop Here</div>
-                      <span className='kanban__empty-hand'>
+                    <div className="kanban__empty">
+                      <div className="kanban__empty-title">Drop Here</div>
+                      <span className="kanban__empty-hand">
                         <FaHandPointUp />
                       </span>
                     </div>
                   ) : (
-                    <div className='kanban__empty'>
-                      <span className='kanban__empty-icon'>
+                    <div className="kanban__empty">
+                      <span className="kanban__empty-icon">
                         <FaInbox />
                       </span>
-                      <div className='kanban__empty-title'>Empty</div>
-                      <div className='kanban__empty-sub'>
+                      <div className="kanban__empty-title">Empty</div>
+                      <div className="kanban__empty-sub">
                         Move card here
-                        <span className='kanban__empty-hand'>
+                        <span className="kanban__empty-hand">
                           <FaHandPointUp />
                         </span>
                       </div>

@@ -77,6 +77,29 @@
       font-size: 0.85rem;
       opacity: 0.8;
     }
+
+    /* NEW: focus-mode controls (dropdown + toggle) */
+    .kanban__controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .kanban__toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      user-select: none;
+
+      input[type='checkbox'] {
+        accent-color: #b5bcff;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+    }
   }
 }
 
@@ -268,6 +291,63 @@
   .is-dragging { cursor: grabbing !important; z-index: 3; }
 }
 
+/* ===== NEW: Focus-mode stats bar ===== */
+.focus-stats {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.5rem 1rem 0; /* sit under the header nicely */
+}
+
+.focus-stats__item {
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.55rem;
+  background: #1f222e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px; /* square-ish bubble */
+  color: #e7e9ff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+
+  &:hover {
+    border-color: rgba(181, 188, 255, 0.4);
+    background: #23273a;
+  }
+  &:active {
+    transform: translateY(1px);
+  }
+
+  .focus-stats__name {
+    opacity: 0.9;
+  }
+  .focus-stats__count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 26px;
+    height: 22px;
+    padding: 0 0.35rem;
+    background: #b5bcff;
+    color: #111321;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    font-size: 0.8rem;
+    font-weight: 900;
+  }
+
+  &.is-active {
+    background: #2a2f45;
+    border-color: rgba(181, 188, 255, 0.6);
+    .focus-stats__name { color: #cfd2ff; }
+  }
+}
+
 /* ===== Mobile tweaks ===== */
 @media (max-width: 480px) {
   .kanban {
@@ -283,4 +363,6 @@
 
     .kanban__search { min-width: 220px; }
   }
+
+  .focus-stats { padding: 0.5rem 0.75rem 0; }
 }
