@@ -109,6 +109,33 @@ const statusMod = (name: string): string =>
 /** Row builder object with flexible keys but Job-compatible values */
 type RowObject = Partial<Job> & Record<string, string>;
 
+/** Parse "dd.mm.yyyy" (а також d.m.yyyy) у timestamp; invalid -> NaN */
+const dateToTs = (s?: string): number => {
+  if (!s) return NaN;
+  const m = s.trim().match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+  if (!m) return NaN;
+  const d = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const y = Number(m[3]);
+  const dt = new Date(y, mo, d);
+  return dt.getTime();
+};
+
+/** Порівняння двох Job за полем Date з урахуванням порядку. */
+const byDate =
+  (order: 'asc' | 'desc') =>
+  (a: Job, b: Job): number => {
+    const ta = dateToTs(a.Date);
+    const tb = dateToTs(b.Date);
+    const aBad = Number.isNaN(ta);
+    const bBad = Number.isNaN(tb);
+    // невалідні дати — в кінець
+    if (aBad && bBad) return 0;
+    if (aBad) return 1;
+    if (bBad) return -1;
+    return order === 'asc' ? ta - tb : tb - ta;
+  };
+
 /* Memoized item to reduce re-renders on large lists */
 const SortableItem = React.memo(function SortableItem({
   job,
@@ -160,6 +187,36 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
   });
   const [focusIndex, setFocusIndex] = useState<number>(0);
 
+  // Per-column date sort (asc/desc/none), persisted
+  const [sortByDate, setSortByDate] = useState<Record<ColumnName, 'asc' | 'desc' | 'none'>>(() => {
+    const raw = safeLS.get('kanban.sortByDate');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<Record<ColumnName, 'asc' | 'desc' | 'none'>>;
+        return {
+          NEW: parsed.NEW ?? 'none',
+          'CV SENT': parsed['CV SENT'] ?? 'none',
+          'FOLLOWED UP': parsed['FOLLOWED UP'] ?? 'none',
+          INTERVIEW: parsed.INTERVIEW ?? 'none',
+          REFUSAL: parsed.REFUSAL ?? 'none',
+          OFFER: parsed.OFFER ?? 'none',
+          ARCHIVE: parsed.ARCHIVE ?? 'none',
+        };
+      } catch {
+        /* ignore */
+      }
+    }
+    return {
+      NEW: 'none',
+      'CV SENT': 'none',
+      'FOLLOWED UP': 'none',
+      INTERVIEW: 'none',
+      REFUSAL: 'none',
+      OFFER: 'none',
+      ARCHIVE: 'none',
+    };
+  });
+
   // Refs
   const columnsRef = useRef(columns);
   columnsRef.current = columns;
@@ -174,6 +231,11 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
   useEffect(() => {
     safeLS.set('kanban.focusColumn', focusColumn);
   }, [focusColumn]);
+
+  // Persist sort settings
+  useEffect(() => {
+    safeLS.set('kanban.sortByDate', JSON.stringify(sortByDate));
+  }, [sortByDate]);
 
   /* ------- Load jobs from Google Sheets ------- */
   useEffect(() => {
@@ -249,20 +311,29 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
     void loadJobs();
   }, [apiKey, spreadsheetId, range]);
 
-  /* ------- Search / counts ------- */
+  /* ------- Search / counts / per-column sort ------- */
   const filteredColumns = useMemo(() => {
     const t = query.trim().toLowerCase();
-    if (!t) {
-      return columns;
-    }
+    const applyFilter = (jobs: Job[]): Job[] => {
+      if (!t) return jobs;
+      const match = (j: Job): boolean =>
+        [j.Title, j.Company, j.Location, j.Description, j.Link, j.Tag]
+          .map((x) => (x || '').toLowerCase())
+          .some((v) => v.includes(t));
+      return jobs.filter(match);
+    };
 
-    const match = (j: Job): boolean =>
-      [j.Title, j.Company, j.Location, j.Description, j.Link, j.Tag]
-        .map((x) => (x || '').toLowerCase())
-        .some((v) => v.includes(t));
-
-    return columns.map((c) => ({...c, jobs: c.jobs.filter(match)}));
-  }, [columns, query]);
+    return columns.map((c) => {
+      const filtered = applyFilter(c.jobs);
+      const order = sortByDate[c.name];
+      if (order === 'none') {
+        return {...c, jobs: filtered};
+      }
+      // не мутуємо оригінальний масив
+      const sorted = [...filtered].sort(byDate(order));
+      return {...c, jobs: sorted};
+    });
+  }, [columns, query, sortByDate]);
 
   const counts = useMemo(() => {
     const map: Record<string, number> = {};
@@ -291,12 +362,9 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
       try {
         const res = await fetch(`${webAppUrl}?${params.toString()}`);
         if (!res.ok) {
-          // non-blocking: log only
-           
           console.error('Sheets update failed:', res.status, await res.text());
         }
       } catch (e) {
-         
         console.error('Sheets fetch error:', e);
       }
     },
@@ -367,11 +435,9 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
         try {
           const res = await fetch(`${webAppUrl}?${params.toString()}`);
           if (!res.ok) {
-             
             console.error('Sheets save failed:', res.status, await res.text());
           }
         } catch (e) {
-           
           console.error('Sheets fetch error:', e);
         }
       }
@@ -531,6 +597,51 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
     );
   };
 
+  /* ------- Sort control UI ------- */
+
+  const cycleSort = useCallback((col: ColumnName) => {
+    setSortByDate((prev) => {
+      const cur = prev[col];
+      const next = cur === 'none' ? 'asc' : cur === 'asc' ? 'desc' : 'none';
+      return {...prev, [col]: next};
+    });
+  }, []);
+
+  const renderSortButton = (col: ColumnName) => {
+    const state = sortByDate[col];
+    const label = state === 'asc' ? '▲' : state === 'desc' ? '▼' : '⇅';
+    const title =
+      state === 'asc'
+        ? 'Sorted by date: ascending (click to switch to descending)'
+        : state === 'desc'
+          ? 'Sorted by date: descending (click to turn off)'
+          : 'Sort by date (click for ascending)';
+
+    return (
+      <button
+        type="button"
+        onClick={() => cycleSort(col)}
+        className="kanban__sort"
+        title={title}
+        aria-label={`Sort ${col} by date: ${state}`}
+        style={{
+          display: 'inline-grid',
+          placeItems: 'center',
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          border: '1px solid rgba(157,166,255,0.18)',
+          background: 'rgba(157,166,255,0.09)',
+          color: '#cfd2ff',
+          fontWeight: 900,
+          cursor: 'pointer',
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
+
   /* ========== Render ========== */
   return (
     <div className="kanban-page">
@@ -630,6 +741,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
                   </h2>
 
                   <div style={{display: 'inline-flex', gap: '0.4rem', alignItems: 'center'}}>
+                    {renderSortButton(focusColumn)}
                     <span className="kanban__column-count">{counts[focusColumn] ?? 0}</span>
                     <span
                       className="kanban__column-count"
@@ -726,11 +838,14 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
                       {col.name}
                       <span className="kanban__column-icon">{col.icon}</span>
                     </h2>
-                    <span className="kanban__column-count">
-                      {query.trim()
-                        ? `${col.jobs.length}/${columns[colIndex].jobs.length}`
-                        : columns[colIndex].jobs.length}
-                    </span>
+                    <div style={{display: 'inline-flex', gap: '0.4rem', alignItems: 'center'}}>
+                      {renderSortButton(col.name)}
+                      <span className="kanban__column-count">
+                        {query.trim()
+                          ? `${col.jobs.length}/${columns[colIndex].jobs.length}`
+                          : columns[colIndex].jobs.length}
+                      </span>
+                    </div>
                   </div>
 
                   <ReactSortable<Job>
