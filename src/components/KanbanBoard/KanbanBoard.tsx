@@ -67,18 +67,10 @@ type ColumnName = typeof COLUMN_NAMES[number];
 
 const safeLS = {
   get(key: string): string | null {
-    try {
-      return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
-    } catch {
-      return null;
-    }
+    try { return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null; } catch { return null; }
   },
   set(key: string, val: string): void {
-    try {
-      if (typeof window !== 'undefined') window.localStorage.setItem(key, val);
-    } catch {
-      /* ignore */
-    }
+    try { if (typeof window !== 'undefined') window.localStorage.setItem(key, val); } catch { /* ignore */ }
   },
 };
 
@@ -87,20 +79,13 @@ const isColumnName = (s: unknown): s is ColumnName =>
 
 const iconByName = (name: string): ReactNode => {
   switch (name) {
-    case 'NEW':
-      return <FaPlus />;
-    case 'CV SENT':
-      return <FaEnvelope />;
-    case 'FOLLOWED UP':
-      return <FaRedoAlt />;
-    case 'INTERVIEW':
-      return <FaPhoneAlt />;
-    case 'REFUSAL':
-      return <FaTimesCircle />;
-    case 'OFFER':
-      return <FaBriefcase />;
-    default:
-      return <FaArchive />;
+    case 'NEW': return <FaPlus />;
+    case 'CV SENT': return <FaEnvelope />;
+    case 'FOLLOWED UP': return <FaRedoAlt />;
+    case 'INTERVIEW': return <FaPhoneAlt />;
+    case 'REFUSAL': return <FaTimesCircle />;
+    case 'OFFER': return <FaBriefcase />;
+    default: return <FaArchive />;
   }
 };
 
@@ -140,17 +125,19 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [query, setQuery] = useState<string>('');
 
-  // Focus Mode (process one job at a time) — restored from localStorage on first render
+  // NEW: loading/error UI
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Focus Mode — restored from localStorage on first render
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     const v = safeLS.get('kanban.focusMode');
     return v === null ? true : v === '1';
   });
-
   const [focusColumn, setFocusColumn] = useState<ColumnName>(() => {
     const v = safeLS.get('kanban.focusColumn');
     return isColumnName(v) ? v : 'NEW';
   });
-
   const [focusIndex, setFocusIndex] = useState<number>(0);
 
   const columnsRef = useRef(columns);
@@ -160,58 +147,68 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
     'https://script.google.com/macros/s/AKfycbyz0gfeR1cGeoViYk5WiqQIVEBzL46boDHblwLRUfUD3-9G-ASUgek_7zJHCwmSjQlXBw/exec';
 
   // Persist focusMode / focusColumn
-  useEffect(() => {
-    safeLS.set('kanban.focusMode', focusMode ? '1' : '0');
-  }, [focusMode]);
-
-  useEffect(() => {
-    safeLS.set('kanban.focusColumn', focusColumn);
-  }, [focusColumn]);
+  useEffect(() => { safeLS.set('kanban.focusMode', focusMode ? '1' : '0'); }, [focusMode]);
+  useEffect(() => { safeLS.set('kanban.focusColumn', focusColumn); }, [focusColumn]);
 
   // Load from Google Sheets
   useEffect(() => {
     const loadJobs = async (): Promise<void> => {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-        range
-      )}?key=${apiKey}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
+          range
+        )}?key=${apiKey}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
 
-      if (!data.values || data.values.length === 0) return;
+        if (!data.values || data.values.length === 0) {
+          setColumns(COLUMN_NAMES.map((name) => ({ name, icon: iconByName(name), jobs: [] })));
+          setFocusIndex(0);
+          return;
+        }
 
-      // 1) Normalize headers (trim, strip BOM)
-      const rawHeaders = data.values[0] as string[];
-      const norm = (s: string) => s.replace(/^\uFEFF/, '').trim();
-      const headers = rawHeaders.map(norm);
+        // Normalize headers (trim, strip BOM)
+        const rawHeaders = data.values[0] as string[];
+        const norm = (s: string) => s.replace(/^\uFEFF/, '').trim();
+        const headers = rawHeaders.map(norm);
 
-      // 2) Canonicalize certain headers to stable keys used in code
-      const canonicalKey = (h: string) => {
-        const l = h.toLowerCase();
-        if (l === 'tag') return 'Tag';
-        if (l === 'interview date') return 'Interview Date';
-        return h; // keep as-is (trimmed)
-      };
+        // Canonical keys we rely on
+        const canonicalKey = (h: string) => {
+          const l = h.toLowerCase();
+          if (l === 'tag') return 'Tag';
+          if (l === 'interview date') return 'Interview Date';
+          return h;
+        };
 
-      // 3) Build jobs with canonical keys
-      const rows = (data.values as string[][]).slice(1);
-      const jobs: Job[] = rows.map((row, i) => {
-        const obj: any = {};
-        headers.forEach((h, j) => {
-          const key = canonicalKey(h);
-          obj[key] = row[j] ?? '';
+        // Build jobs
+        const rows = (data.values as string[][]).slice(1);
+        const jobs: Job[] = rows.map((row, i) => {
+          const obj: any = {};
+          headers.forEach((h, j) => {
+            const key = canonicalKey(h);
+            obj[key] = row[j] ?? '';
+          });
+          obj._row = i + 2;
+          return obj as Job;
         });
-        obj._row = i + 2; // +1 header, +1 for 1-based
-        return obj as Job;
-      });
 
-      setColumns(
-        COLUMN_NAMES.map((name) => ({
-          name,
-          icon: iconByName(name),
-          jobs: jobs.filter((j) => j.Status && j.Status.toUpperCase() === name.toUpperCase()),
-        }))
-      );
-      setFocusIndex(0);
+        setColumns(
+          COLUMN_NAMES.map((name) => ({
+            name,
+            icon: iconByName(name),
+            jobs: jobs.filter((j) => j.Status && j.Status.toUpperCase() === name.toUpperCase()),
+          }))
+        );
+        setFocusIndex(0);
+      } catch (err: any) {
+        setLoadError(err?.message || 'Failed to load jobs');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     void loadJobs();
@@ -221,12 +218,10 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   const filteredColumns = useMemo(() => {
     const t = query.trim().toLowerCase();
     if (!t) return columns;
-
     const match = (j: Job): boolean =>
-      [j.Title, j.Company, j.Location, j.Description, j.Link]
+      [j.Title, j.Company, j.Location, j.Description, j.Link, j.Tag]
         .map((x) => (x || '').toLowerCase())
         .some((v) => v.includes(t));
-
     return columns.map((c) => ({ ...c, jobs: c.jobs.filter(match) }));
   }, [columns, query]);
 
@@ -268,7 +263,6 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   // Move job between columns by status (no heavy DOM shuffles)
   const moveJobToStatus = useCallback(
     (jobId: string, targetStatus: string) => {
-      // do nothing if target equals current focus column (button should be disabled anyway)
       if (targetStatus === focusColumn) return;
 
       setColumns((prev) => {
@@ -283,7 +277,6 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
 
         const toList = [...prev[toColIdx].jobs];
         const updated: Job = { ...moved, Status: targetStatus };
-        // Insert at the start to avoid big reorders (change to push if you prefer end)
         toList.unshift(updated);
 
         const next = [...prev];
@@ -292,7 +285,6 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         return next;
       });
 
-      // Fire-and-forget Sheets update (optimistic UI)
       const all = columnsRef.current.flatMap((c) => c.jobs);
       const movedJob = all.find((j) => j.ID === jobId);
       if (movedJob) {
@@ -305,7 +297,6 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   // ===== SAVE from Modal (OPTIMISTIC local update + Sheets) =====
   const handleSaveModal = useCallback(
     async (updatedJob: Job): Promise<void> => {
-      // 1) Optimistically update local state (columns + selectedJob)
       setColumns((prev) =>
         prev.map((c) => ({
           ...c,
@@ -314,7 +305,6 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
       );
       setSelectedJob((sj) => (sj && sj.ID === updatedJob.ID ? { ...sj, ...updatedJob } : sj));
 
-      // 2) Persist to Google Sheets
       if (updatedJob._row) {
         const params = new URLSearchParams({
           row: String(updatedJob._row),
@@ -411,7 +401,6 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
     [moveWithinColumn]
   );
 
-  // ===== Focus Mode data =====
   const focusList = useMemo(() => {
     const col = filteredColumns.find((c) => c.name === focusColumn);
     return col ? col.jobs : [];
@@ -422,12 +411,9 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   const goNext = useCallback(() => {
     setFocusIndex((i) => Math.min(i + 1, Math.max(focusList.length - 1, 0)));
   }, [focusList.length]);
-
   const goPrev = useCallback(() => {
     setFocusIndex((i) => Math.max(i - 1, 0));
   }, []);
-
-  // Keep index in range when the list changes (e.g., after moving or saving a job)
   useEffect(() => {
     setFocusIndex((i) => Math.min(i, Math.max(focusList.length - 1, 0)));
   }, [focusList.length]);
@@ -439,23 +425,11 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
 
   useEffect(() => {
     if (!focusMode) return;
-
     const onKey = (e: KeyboardEvent) => {
       if (!currentJob) return;
-
-      // Navigation
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        goNext();
-        return;
-      }
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        goPrev();
-        return;
-      }
+      if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); return; }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev(); return; }
     };
-
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [focusMode, currentJob, goNext, goPrev, moveJobToStatus]);
@@ -503,14 +477,20 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
           />
         </div>
 
+        {/* Fancy toggle switch (styled in SCSS) */}
         <div className="kanban__controls">
           <label className="kanban__toggle">
             <input
+              className="kanban__toggle-input"
               type="checkbox"
               checked={focusMode}
               onChange={(e) => setFocusMode(e.target.checked)}
+              aria-label="Toggle focus mode"
             />
-            Focus mode
+            <span className="kanban__toggle-track" aria-hidden="true">
+              <span className="kanban__toggle-thumb" />
+            </span>
+            <span className="kanban__toggle-text">Focus mode</span>
           </label>
         </div>
 
@@ -521,225 +501,238 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         <div className="kanban__brand">Discord: amiduck</div>
       </div>
 
-      {/* Focus-mode badge bar (per-column counts & quick switch) */}
-      {focusMode && (
-        <div className="focus-stats">
-          {COLUMN_NAMES.map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={`focus-stats__item ${n === focusColumn ? 'is-active' : ''}`}
-              onClick={() => {
-                setFocusColumn(n);
-                setFocusIndex(0);
-              }}
-              title={`${n} (${counts[n] ?? 0})`}
-            >
-              <span className="focus-stats__name">{n}</span>
-              <span className="focus-stats__count">{counts[n] ?? 0}</span>
-            </button>
-          ))}
+      {/* LOADING / ERROR UI */}
+      {isLoading ? (
+        <div className="kanban kanban--loading">
+          <div className="loader">
+            <div className="loader__spinner" role="status" aria-live="polite" aria-label="Loading jobs" />
+            <div className="loader__text">Loading jobs…</div>
+          </div>
         </div>
-      )}
-
-      {/* Focus Mode: one card + quick actions */}
-      {focusMode ? (
-        <div className="kanban" style={{ paddingTop: '0.5rem' }}>
-          <div
-            className={`kanban__column ${statusMod(focusColumn)}`}
-            style={{ flex: '1 1 520px', maxWidth: 760, margin: '0 auto' }}
-          >
-            <div className="kanban__column-header">
-              <h2 className="kanban__column-title">
-                {focusColumn}
-                <span className="kanban__column-icon">{iconByName(focusColumn)}</span>
-              </h2>
-
-              <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
-                <span className="kanban__column-count">{counts[focusColumn] ?? 0}</span>
-                {focusMode && (
-                  <span
-                    className="kanban__column-count"
-                    aria-live="polite"
-                    style={{ opacity: 0.9, background: '#3b3e55', color: '#fff' }}
-                  >
-                    {focusList.length ? `${focusIndex + 1}/${focusList.length}` : '0/0'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="kanban__list">
-              {!currentJob ? (
-                <div className="kanban__empty">
-                  <span className="kanban__empty-icon">
-                    <FaInbox />
-                  </span>
-                  <div className="kanban__empty-title">Nothing here</div>
-                  <div className="kanban__empty-sub">Choose another column or turn off Focus mode</div>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gap: '0.75rem' }}>
-                  <div>
-                    <KanbanCard
-                      id={currentJob.ID}
-                      title={currentJob.Title}
-                      company={currentJob.Company}
-                      date={currentJob.Date}
-                      location={currentJob.Location}
-                      link={currentJob.Link}
-                      tag={currentJob.Tag}
-                      onClick={() => {
-                        setSelectedJob(currentJob);
-                        setIsModalOpen(true);
-                      }}
-                    />
-                  </div>
-
-                  {/* Quick actions (buttons are disabled if target equals focusColumn) */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {renderAction('CV SENT', 'CV SENT', <FaEnvelope />, 'I submitted my CV')}
-                    {renderAction('FOLLOWED UP', 'FOLLOWED UP', <FaRedoAlt />)}
-                    {renderAction('INTERVIEW', 'INTERVIEW', <FaPhoneAlt />)}
-                    {renderAction('REFUSAL', 'REFUSAL', <FaTimesCircle />)}
-                    {renderAction('OFFER', 'OFFER', <FaBriefcase />)}
-                    {renderAction('ARCHIVE', 'ARCHIVE', <FaArchive />)}
-                  </div>
-
-                  {/* Navigation (30% / 70%) */}
-                  {(() => {
-                    const isPrevDisabled = focusIndex <= 0;
-                    const isNextDisabled = focusIndex >= focusList.length - 1;
-                    return (
-                      <div className="focus-nav" role="group" aria-label="Focus navigation">
-                        <button
-                          type="button"
-                          className="focus-nav__btn focus-nav__btn--prev"
-                          onClick={goPrev}
-                          disabled={isPrevDisabled}
-                          aria-disabled={isPrevDisabled}
-                          title={isPrevDisabled ? 'No previous card' : 'Previous (←)'}
-                        >
-                          ◀︎ Prev
-                        </button>
-
-                        <button
-                          type="button"
-                          className="focus-nav__btn focus-nav__btn--next"
-                          onClick={goNext}
-                          disabled={isNextDisabled}
-                          aria-disabled={isNextDisabled}
-                          title={isNextDisabled ? 'No next card' : 'Next (→)'}
-                        >
-                          Next ▶︎
-                        </button>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
+      ) : loadError ? (
+        <div className="kanban kanban--loading">
+          <div className="loader">
+            <div className="loader__text">Failed to load jobs</div>
+            <div className="loader__sub">{loadError}</div>
           </div>
         </div>
       ) : (
-        // Classic Kanban with DnD
-        <div className="kanban">
-          {filteredColumns.map((col, colIndex) => (
-            <div key={col.name} className={`kanban__column ${statusMod(col.name)}`}>
-              <div className="kanban__column-header">
-                <h2 className="kanban__column-title">
-                  {col.name}
-                  <span className="kanban__column-icon">{col.icon}</span>
-                </h2>
-                <span className="kanban__column-count">
-                  {query.trim()
-                    ? `${col.jobs.length}/${columns[colIndex].jobs.length}`
-                    : columns[colIndex].jobs.length}
-                </span>
-              </div>
+        <>
+          {/* Focus-mode badge bar (per-column counts & quick switch) */}
+          {focusMode && (
+            <div className="focus-stats">
+              {COLUMN_NAMES.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={`focus-stats__item ${n === focusColumn ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setFocusColumn(n as ColumnName);
+                    setFocusIndex(0);
+                  }}
+                  title={`${n} (${counts[n] ?? 0})`}
+                >
+                  <span className="focus-stats__name">{n}</span>
+                  <span className="focus-stats__count">{counts[n] ?? 0}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
-              <ReactSortable<Job>
-                list={col.jobs}
-                setList={() => {
-                  /* no-op: avoid re-renders during dragover */
-                }}
-                group={
-                  dndDisabled
-                    ? { name: 'jobs', pull: false, put: false }
-                    : { name: 'jobs', pull: true, put: true }
-                }
-                disabled={dndDisabled}
-                animation={col.jobs.length >= 200 ? 0 : 120}
-                easing="cubic-bezier(.2,.7,.3,1)"
-                className={`kanban__list${dndDisabled ? ' kanban__list--disabled' : ''}`}
-                onAdd={(evt) => {
-                  if (!dndDisabled) handleAdd(evt as SortableEvent, colIndex);
-                }}
-                onUpdate={(evt) => {
-                  if (!dndDisabled) handleUpdate(evt as SortableEvent, colIndex);
-                }}
-                onStart={() => setIsDragging(true)}
-                onEnd={() => setIsDragging(false)}
-                forceFallback={false}
-                invertSwap={false}
-                swapThreshold={0.5}
-                emptyInsertThreshold={24}
-                dragoverBubble={false}
-                delayOnTouchOnly
-                touchStartThreshold={8}
-                scroll={true}
-                scrollSensitivity={60}
-                scrollSpeed={12}
-                ghostClass="is-ghost"
-                chosenClass="is-chosen"
-                dragClass="is-dragging"
+          {/* Focus Mode: one card + quick actions */}
+          {focusMode ? (
+            <div className="kanban" style={{ paddingTop: '0.5rem' }}>
+              <div
+                className={`kanban__column ${statusMod(focusColumn)}`}
+                style={{ flex: '1 1 520px', maxWidth: 760, margin: '0 auto' }}
               >
-                {col.jobs.length === 0 ? (
-                  isDragging ? (
-                    <div className="kanban__empty">
-                      <div className="kanban__empty-title">Drop Here</div>
-                      <span className="kanban__empty-hand">
-                        <FaHandPointUp />
+                <div className="kanban__column-header">
+                  <h2 className="kanban__column-title">
+                    {focusColumn}
+                    <span className="kanban__column-icon">{iconByName(focusColumn)}</span>
+                  </h2>
+
+                  <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                    <span className="kanban__column-count">{counts[focusColumn] ?? 0}</span>
+                    {focusMode && (
+                      <span
+                        className="kanban__column-count"
+                        aria-live="polite"
+                        style={{ opacity: 0.9, background: '#3b3e55', color: '#fff' }}
+                      >
+                        {focusList.length ? `${focusIndex + 1}/${focusList.length}` : '0/0'}
                       </span>
-                    </div>
-                  ) : (
+                    )}
+                  </div>
+                </div>
+
+                <div className="kanban__list">
+                  {!currentJob ? (
                     <div className="kanban__empty">
                       <span className="kanban__empty-icon">
                         <FaInbox />
                       </span>
-                      <div className="kanban__empty-title">Empty</div>
-                      <div className="kanban__empty-sub">
-                        Move card here
-                        <span className="kanban__empty-hand">
-                          <FaHandPointUp />
-                        </span>
-                      </div>
+                      <div className="kanban__empty-title">Nothing here</div>
+                      <div className="kanban__empty-sub">Choose another column or turn off Focus mode</div>
                     </div>
-                  )
-                ) : (
-                  col.jobs.map((job) => (
-                    <SortableItem
-                      key={job.ID}
-                      job={job}
-                      onClick={(j) => {
-                        setSelectedJob(j);
-                        setIsModalOpen(true);
-                      }}
-                    />
-                  ))
-                )}
-              </ReactSortable>
-            </div>
-          ))}
-        </div>
-      )}
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      <div>
+                        <KanbanCard
+                          id={currentJob.ID}
+                          title={currentJob.Title}
+                          company={currentJob.Company}
+                          date={currentJob.Date}
+                          location={currentJob.Location}
+                          link={currentJob.Link}
+                          tag={currentJob.Tag}
+                          onClick={() => {
+                            setSelectedJob(currentJob);
+                            setIsModalOpen(true);
+                          }}
+                        />
+                      </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        job={selectedJob}
-        onSave={handleSaveModal}
-      />
+                      {/* Quick actions */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {renderAction('CV SENT', 'CV SENT', <FaEnvelope />, 'I submitted my CV')}
+                        {renderAction('FOLLOWED UP', 'FOLLOWED UP', <FaRedoAlt />)}
+                        {renderAction('INTERVIEW', 'INTERVIEW', <FaPhoneAlt />)}
+                        {renderAction('REFUSAL', 'REFUSAL', <FaTimesCircle />)}
+                        {renderAction('OFFER', 'OFFER', <FaBriefcase />)}
+                        {renderAction('ARCHIVE', 'ARCHIVE', <FaArchive />)}
+                      </div>
+
+                      {/* Navigation (30% / 70%) */}
+                      {(() => {
+                        const isPrevDisabled = focusIndex <= 0;
+                        const isNextDisabled = focusIndex >= focusList.length - 1;
+                        return (
+                          <div className="focus-nav" role="group" aria-label="Focus navigation">
+                            <button
+                              type="button"
+                              className="focus-nav__btn focus-nav__btn--prev"
+                              onClick={goPrev}
+                              disabled={isPrevDisabled}
+                              aria-disabled={isPrevDisabled}
+                              title={isPrevDisabled ? 'No previous card' : 'Previous (←)'}
+                            >
+                              ◀︎ Prev
+                            </button>
+
+                            <button
+                              type="button"
+                              className="focus-nav__btn focus-nav__btn--next"
+                              onClick={goNext}
+                              disabled={isNextDisabled}
+                              aria-disabled={isNextDisabled}
+                              title={isNextDisabled ? 'No next card' : 'Next (→)'}
+                            >
+                              Next ▶︎
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Classic Kanban with DnD
+            <div className="kanban">
+              {filteredColumns.map((col, colIndex) => (
+                <div key={col.name} className={`kanban__column ${statusMod(col.name)}`}>
+                  <div className="kanban__column-header">
+                    <h2 className="kanban__column-title">
+                      {col.name}
+                      <span className="kanban__column-icon">{col.icon}</span>
+                    </h2>
+                    <span className="kanban__column-count">
+                      {query.trim()
+                        ? `${col.jobs.length}/${columns[colIndex].jobs.length}`
+                        : columns[colIndex].jobs.length}
+                    </span>
+                  </div>
+
+                  <ReactSortable<Job>
+                    list={col.jobs}
+                    setList={() => { /* no-op */ }}
+                    group={
+                      dndDisabled
+                        ? { name: 'jobs', pull: false, put: false }
+                        : { name: 'jobs', pull: true, put: true }
+                    }
+                    disabled={dndDisabled}
+                    animation={col.jobs.length >= 200 ? 0 : 120}
+                    easing="cubic-bezier(.2,.7,.3,1)"
+                    className={`kanban__list${dndDisabled ? ' kanban__list--disabled' : ''}`}
+                    onAdd={(evt) => { if (!dndDisabled) handleAdd(evt as SortableEvent, colIndex); }}
+                    onUpdate={(evt) => { if (!dndDisabled) handleUpdate(evt as SortableEvent, colIndex); }}
+                    onStart={() => setIsDragging(true)}
+                    onEnd={() => setIsDragging(false)}
+                    forceFallback={false}
+                    invertSwap={false}
+                    swapThreshold={0.5}
+                    emptyInsertThreshold={24}
+                    dragoverBubble={false}
+                    delayOnTouchOnly
+                    touchStartThreshold={8}
+                    scroll={true}
+                    scrollSensitivity={60}
+                    scrollSpeed={12}
+                    ghostClass="is-ghost"
+                    chosenClass="is-chosen"
+                    dragClass="is-dragging"
+                  >
+                    {col.jobs.length === 0 ? (
+                      isDragging ? (
+                        <div className="kanban__empty">
+                          <div className="kanban__empty-title">Drop Here</div>
+                          <span className="kanban__empty-hand">
+                            <FaHandPointUp />
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="kanban__empty">
+                          <span className="kanban__empty-icon">
+                            <FaInbox />
+                          </span>
+                          <div className="kanban__empty-title">Empty</div>
+                          <div className="kanban__empty-sub">
+                            Move card here
+                            <span className="kanban__empty-hand">
+                              <FaHandPointUp />
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      col.jobs.map((job) => (
+                        <SortableItem
+                          key={job.ID}
+                          job={job}
+                          onClick={(j) => {
+                            setSelectedJob(j);
+                            setIsModalOpen(true);
+                          }}
+                        />
+                      ))
+                    )}
+                  </ReactSortable>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Modal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            job={selectedJob}
+            onSave={handleSaveModal}
+          />
+        </>
+      )}
     </div>
   );
 };
@@ -758,9 +751,7 @@ function btnStyle(opts?: { primary?: boolean; muted?: boolean; disabled?: boolea
     base.color = '#111321';
     base.fontWeight = 800;
   }
-  if (opts?.muted) {
-    base.opacity = 0.8;
-  }
+  if (opts?.muted) base.opacity = 0.8;
   if (opts?.disabled) {
     base.opacity = 0.45;
     base.cursor = 'not-allowed';
