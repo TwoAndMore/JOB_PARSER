@@ -211,6 +211,9 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   // Move job between columns by status (no heavy DOM shuffles)
   const moveJobToStatus = useCallback(
     (jobId: string, targetStatus: string) => {
+      // do nothing if target equals current focus column (button should be disabled anyway)
+      if (targetStatus === focusColumn) return;
+
       setColumns((prev) => {
         const fromColIdx = prev.findIndex((c) => c.jobs.some((j) => j.ID === jobId));
         const toColIdx = prev.findIndex((c) => c.name === targetStatus);
@@ -239,7 +242,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         void updateStatusInSheets({ ...movedJob, Status: targetStatus }, targetStatus);
       }
     },
-    [updateStatusInSheets]
+    [focusColumn, updateStatusInSheets]
   );
 
   // ===== SAVE from Modal (OPTIMISTIC local update + Sheets) =====
@@ -399,6 +402,32 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [focusMode, currentJob, goNext, goPrev, moveJobToStatus]);
 
+  // Helper to render a status action with disabled state if equals focusColumn
+  const renderAction = (
+    label: string,
+    status: typeof COLUMN_NAMES[number],
+    icon: ReactNode,
+    title?: string
+  ) => {
+    const disabled = focusColumn === status;
+    return (
+      <button
+        key={status}
+        onClick={() => {
+          if (!currentJob || disabled) return;
+          moveJobToStatus(currentJob.ID, status);
+        }}
+        className="btn"
+        style={btnStyle({ disabled })}
+        title={title || label}
+        disabled={disabled}
+        aria-disabled={disabled}
+      >
+        {icon} {label}
+      </button>
+    );
+  };
+
   return (
     <div className="kanban-page">
       {/* Header */}
@@ -468,13 +497,13 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                 <span className="kanban__column-icon">{iconByName(focusColumn)}</span>
               </h2>
 
-              <div style={{display:'inline-flex', gap: '0.4rem', alignItems:'center'}}>
+              <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
                 <span className="kanban__column-count">{counts[focusColumn] ?? 0}</span>
                 {focusMode && (
                   <span
                     className="kanban__column-count"
                     aria-live="polite"
-                    style={{opacity:.9, background:'#3b3e55', color:'#fff'}}
+                    style={{ opacity: 0.9, background: '#3b3e55', color: '#fff' }}
                   >
                     {focusList.length ? `${focusIndex + 1}/${focusList.length}` : '0/0'}
                   </span>
@@ -508,56 +537,14 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                     />
                   </div>
 
-                  {/* Quick actions */}
+                  {/* Quick actions (buttons are disabled if target equals focusColumn) */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <button
-                      onClick={() => moveJobToStatus(currentJob.ID, 'CV SENT')}
-                      className="btn"
-                      style={btnStyle()}
-                      title="I submitted my CV"
-                    >
-                      <FaEnvelope /> CV SENT
-                    </button>
-
-                    <button
-                      onClick={() => moveJobToStatus(currentJob.ID, 'FOLLOWED UP')}
-                      className="btn"
-                      style={btnStyle()}
-                    >
-                      <FaRedoAlt /> FOLLOWED UP
-                    </button>
-
-                    <button
-                      onClick={() => moveJobToStatus(currentJob.ID, 'INTERVIEW')}
-                      className="btn"
-                      style={btnStyle()}
-                    >
-                      <FaPhoneAlt /> INTERVIEW
-                    </button>
-
-                    <button
-                      onClick={() => moveJobToStatus(currentJob.ID, 'OFFER')}
-                      className="btn"
-                      style={btnStyle()}
-                    >
-                      <FaBriefcase /> OFFER
-                    </button>
-
-                    <button
-                      onClick={() => moveJobToStatus(currentJob.ID, 'REFUSAL')}
-                      className="btn"
-                      style={btnStyle()}
-                    >
-                      <FaTimesCircle /> REFUSAL
-                    </button>
-
-                    <button
-                      onClick={() => moveJobToStatus(currentJob.ID, 'ARCHIVE')}
-                      className="btn"
-                      style={btnStyle()}
-                    >
-                      <FaArchive /> ARCHIVE
-                    </button>
+                    {renderAction('CV SENT', 'CV SENT', <FaEnvelope />, 'I submitted my CV')}
+                    {renderAction('FOLLOWED UP', 'FOLLOWED UP', <FaRedoAlt />)}
+                    {renderAction('INTERVIEW', 'INTERVIEW', <FaPhoneAlt />)}
+                    {renderAction('REFUSAL', 'REFUSAL', <FaTimesCircle />)}
+                    {renderAction('OFFER', 'OFFER', <FaBriefcase />)}
+                    {renderAction('ARCHIVE', 'ARCHIVE', <FaArchive />)}
                   </div>
 
                   {/* Navigation */}
@@ -681,7 +668,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   );
 };
 
-function btnStyle(opts?: { primary?: boolean; muted?: boolean }): React.CSSProperties {
+function btnStyle(opts?: { primary?: boolean; muted?: boolean; disabled?: boolean }): React.CSSProperties {
   const base: React.CSSProperties = {
     padding: '0.5rem 0.75rem',
     borderRadius: 8,
@@ -697,6 +684,11 @@ function btnStyle(opts?: { primary?: boolean; muted?: boolean }): React.CSSPrope
   }
   if (opts?.muted) {
     base.opacity = 0.8;
+  }
+  if (opts?.disabled) {
+    base.opacity = 0.45;
+    base.cursor = 'not-allowed';
+    base.filter = 'grayscale(0.2)';
   }
   return base;
 }
