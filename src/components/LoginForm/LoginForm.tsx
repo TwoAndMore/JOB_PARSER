@@ -1,20 +1,22 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import './LoginForm.scss';
 
 type LoginFormProps = {
-  onLogin: (config: { apiKey: string; spreadsheetId: string; range: string }) => void;
+  onLogin: (config: {apiKey: string; spreadsheetId: string; range: string}) => void;
 };
 
-export default function LoginForm({ onLogin }: LoginFormProps) {
+export default function LoginForm({onLogin}: LoginFormProps) {
   const [apiKey, setApiKey] = useState('');
   const [spreadsheetId, setSpreadsheetId] = useState('');
   const [range, setRange] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey.trim() || !spreadsheetId.trim() || !range.trim()) return;
+    if (!apiKey.trim() || !spreadsheetId.trim() || !range.trim()) {
+      return;
+    }
 
-    const config = { apiKey, spreadsheetId, range };
+    const config = {apiKey, spreadsheetId, range};
     localStorage.setItem('GOOGLE_CONFIG', JSON.stringify(config));
     onLogin(config);
   };
@@ -48,7 +50,9 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
           onChange={(e) => setRange(e.target.value)}
         />
 
-        <button className="login__button" type="submit">Save & Continue</button>
+        <button className="login__button" type="submit">
+          Save & Continue
+        </button>
       </form>
     </div>
   );

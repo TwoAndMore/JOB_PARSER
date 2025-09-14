@@ -1,29 +1,24 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
-import { ReactSortable } from 'react-sortablejs';
-import type { SortableEvent } from 'sortablejs';
+import React, {type ReactNode, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {ReactSortable} from 'react-sortablejs';
+import type {SortableEvent} from 'sortablejs';
 import {
-  FaPlus,
-  FaEnvelope,
-  FaRedoAlt,
-  FaPhoneAlt,
-  FaTimesCircle,
-  FaBriefcase,
   FaArchive,
-  FaInbox,
+  FaBriefcase,
+  FaEnvelope,
   FaHandPointUp,
+  FaInbox,
+  FaPhoneAlt,
+  FaPlus,
+  FaRedoAlt,
   FaSearch,
+  FaTimesCircle,
 } from 'react-icons/fa';
 
 import './KanbanBoard.scss';
 import KanbanCard from '../KanbanCard/KanbanCard';
 import Modal from '../Modal/Modal';
+
+/* ========== Types ========== */
 
 type Job = {
   ID: string;
@@ -32,17 +27,17 @@ type Job = {
   Company?: string;
   Location?: string;
   Link?: string;
-  Date?: string;
+  Date?: string; // dd.mm.yyyy
   Status?: string;
   Notes?: string;
   'Interview Date'?: string;
   Contacts?: string;
   Tag?: string;
-  _row?: number;
+  _row?: number; // 1-based sheet row
 };
 
 type Column = {
-  name: string;
+  name: ColumnName;
   icon: ReactNode;
   jobs: Job[];
 };
@@ -63,40 +58,62 @@ const COLUMN_NAMES = [
   'ARCHIVE',
 ] as const;
 
-type ColumnName = typeof COLUMN_NAMES[number];
+type ColumnName = (typeof COLUMN_NAMES)[number];
+
+/* ========== LocalStorage utils ========== */
 
 const safeLS = {
   get(key: string): string | null {
-    try { return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null; } catch { return null; }
+    try {
+      return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+    } catch {
+      return null;
+    }
   },
   set(key: string, val: string): void {
-    try { if (typeof window !== 'undefined') window.localStorage.setItem(key, val); } catch { /* ignore */ }
+    try {
+      if (typeof window !== 'undefined') window.localStorage.setItem(key, val);
+    } catch {
+      /* ignore */
+    }
   },
 };
+
+/* ========== Helpers ========== */
 
 const isColumnName = (s: unknown): s is ColumnName =>
   typeof s === 'string' && (COLUMN_NAMES as readonly string[]).includes(s);
 
-const iconByName = (name: string): ReactNode => {
+const iconByName = (name: ColumnName): ReactNode => {
   switch (name) {
-    case 'NEW': return <FaPlus />;
-    case 'CV SENT': return <FaEnvelope />;
-    case 'FOLLOWED UP': return <FaRedoAlt />;
-    case 'INTERVIEW': return <FaPhoneAlt />;
-    case 'REFUSAL': return <FaTimesCircle />;
-    case 'OFFER': return <FaBriefcase />;
-    default: return <FaArchive />;
+    case 'NEW':
+      return <FaPlus />;
+    case 'CV SENT':
+      return <FaEnvelope />;
+    case 'FOLLOWED UP':
+      return <FaRedoAlt />;
+    case 'INTERVIEW':
+      return <FaPhoneAlt />;
+    case 'REFUSAL':
+      return <FaTimesCircle />;
+    case 'OFFER':
+      return <FaBriefcase />;
+    default:
+      return <FaArchive />;
   }
 };
 
 const statusMod = (name: string): string =>
   `kanban__column--${name.toLowerCase().replace(/\s+/g, '-')}`;
 
-/** Lightweight memo wrapper to reduce re-renders on large lists */
+/** Row builder object with flexible keys but Job-compatible values */
+type RowObject = Partial<Job> & Record<string, string>;
+
+/* Memoized item to reduce re-renders on large lists */
 const SortableItem = React.memo(function SortableItem({
-                                                        job,
-                                                        onClick,
-                                                      }: {
+  job,
+  onClick,
+}: {
   job: Job;
   onClick: (job: Job) => void;
 }) {
@@ -116,20 +133,23 @@ const SortableItem = React.memo(function SortableItem({
   );
 });
 
-const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
+/* ========== Component ========== */
+
+const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
+  // Data state
   const [columns, setColumns] = useState<Column[]>(
-    COLUMN_NAMES.map((name) => ({ name, icon: iconByName(name), jobs: [] }))
+    COLUMN_NAMES.map((name) => ({name, icon: iconByName(name), jobs: []})),
   );
+
+  // UI state
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [query, setQuery] = useState<string>('');
-
-  // NEW: loading/error UI
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Focus Mode — restored from localStorage on first render
+  // Focus mode state (restored from LS on first render)
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     const v = safeLS.get('kanban.focusMode');
     return v === null ? true : v === '1';
@@ -140,59 +160,73 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   });
   const [focusIndex, setFocusIndex] = useState<number>(0);
 
+  // Refs
   const columnsRef = useRef(columns);
   columnsRef.current = columns;
 
   const webAppUrl =
     'https://script.google.com/macros/s/AKfycbyz0gfeR1cGeoViYk5WiqQIVEBzL46boDHblwLRUfUD3-9G-ASUgek_7zJHCwmSjQlXBw/exec';
 
-  // Persist focusMode / focusColumn
-  useEffect(() => { safeLS.set('kanban.focusMode', focusMode ? '1' : '0'); }, [focusMode]);
-  useEffect(() => { safeLS.set('kanban.focusColumn', focusColumn); }, [focusColumn]);
+  // Persist focus settings
+  useEffect(() => {
+    safeLS.set('kanban.focusMode', focusMode ? '1' : '0');
+  }, [focusMode]);
+  useEffect(() => {
+    safeLS.set('kanban.focusColumn', focusColumn);
+  }, [focusColumn]);
 
-  // Load from Google Sheets
+  /* ------- Load jobs from Google Sheets ------- */
   useEffect(() => {
     const loadJobs = async (): Promise<void> => {
       setIsLoading(true);
       setLoadError(null);
+
+      // Always enforce blocks
+      if (!apiKey.trim() || !spreadsheetId.trim() || !range.trim()) {
+        setColumns(COLUMN_NAMES.map((name) => ({name, icon: iconByName(name), jobs: []})));
+        setIsLoading(false);
+        setLoadError('Missing credentials: apiKey, spreadsheetId or range.');
+        return;
+      }
+
       try {
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-          range
+          range,
         )}?key=${apiKey}`;
+
         const res = await fetch(url);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
-        const data = await res.json();
 
+        const data: {values?: string[][]} = await res.json();
         if (!data.values || data.values.length === 0) {
-          setColumns(COLUMN_NAMES.map((name) => ({ name, icon: iconByName(name), jobs: [] })));
+          setColumns(COLUMN_NAMES.map((name) => ({name, icon: iconByName(name), jobs: []})));
           setFocusIndex(0);
           return;
         }
 
-        // Normalize headers (trim, strip BOM)
+        // Normalize headers
         const rawHeaders = data.values[0] as string[];
-        const norm = (s: string) => s.replace(/^\uFEFF/, '').trim();
-        const headers = rawHeaders.map(norm);
+        const headers = rawHeaders.map((s) => s.replace(/^\uFEFF/, '').trim());
 
-        // Canonical keys we rely on
-        const canonicalKey = (h: string) => {
+        // Canonicalize known headers to our Job keys
+        const canonicalKey = (h: string): keyof RowObject => {
           const l = h.toLowerCase();
           if (l === 'tag') return 'Tag';
           if (l === 'interview date') return 'Interview Date';
-          return h;
+          return h as keyof RowObject;
         };
 
         // Build jobs
-        const rows = (data.values as string[][]).slice(1);
+        const rows = data.values.slice(1);
         const jobs: Job[] = rows.map((row, i) => {
-          const obj: any = {};
+          const obj: RowObject = {};
           headers.forEach((h, j) => {
             const key = canonicalKey(h);
             obj[key] = row[j] ?? '';
           });
-          obj._row = i + 2;
+          obj._row = i + 2; // +1 for header, +1 for 1-based
           return obj as Job;
         });
 
@@ -201,11 +235,12 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
             name,
             icon: iconByName(name),
             jobs: jobs.filter((j) => j.Status && j.Status.toUpperCase() === name.toUpperCase()),
-          }))
+          })),
         );
         setFocusIndex(0);
-      } catch (err: any) {
-        setLoadError(err?.message || 'Failed to load jobs');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setLoadError(msg);
       } finally {
         setIsLoading(false);
       }
@@ -214,18 +249,21 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
     void loadJobs();
   }, [apiKey, spreadsheetId, range]);
 
-  // Global search (local, non-destructive)
+  /* ------- Search / counts ------- */
   const filteredColumns = useMemo(() => {
     const t = query.trim().toLowerCase();
-    if (!t) return columns;
+    if (!t) {
+      return columns;
+    }
+
     const match = (j: Job): boolean =>
       [j.Title, j.Company, j.Location, j.Description, j.Link, j.Tag]
         .map((x) => (x || '').toLowerCase())
         .some((v) => v.includes(t));
-    return columns.map((c) => ({ ...c, jobs: c.jobs.filter(match) }));
+
+    return columns.map((c) => ({...c, jobs: c.jobs.filter(match)}));
   }, [columns, query]);
 
-  // Per-column counts (affected by search)
   const counts = useMemo(() => {
     const map: Record<string, number> = {};
     for (const c of filteredColumns) map[c.name] = c.jobs.length;
@@ -234,10 +272,15 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
 
   const dndDisabled = focusMode || query.trim().length > 0;
 
-  // ===== Sheets helpers =====
+  /* ------- Sheets update helpers ------- */
+
+  /** Update only the Status in Google Sheets (optimistic UI elsewhere). */
   const updateStatusInSheets = useCallback(
     async (job: Job, newStatus: string): Promise<void> => {
-      if (!job._row) return;
+      if (!job._row) {
+        return;
+      }
+
       const params = new URLSearchParams({
         row: String(job._row),
         status: newStatus,
@@ -245,25 +288,27 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         origin: window.location.origin,
       });
 
-      const url = `${webAppUrl}?${params.toString()}`;
       try {
-        const res = await fetch(url);
+        const res = await fetch(`${webAppUrl}?${params.toString()}`);
         if (!res.ok) {
-          // eslint-disable-next-line no-console
+          // non-blocking: log only
+           
           console.error('Sheets update failed:', res.status, await res.text());
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
+         
         console.error('Sheets fetch error:', e);
       }
     },
-    [apiKey]
+    [apiKey],
   );
 
-  // Move job between columns by status (no heavy DOM shuffles)
+  /** Move a job to another status column (cheap list ops; minimal DOM shuffles). */
   const moveJobToStatus = useCallback(
-    (jobId: string, targetStatus: string) => {
-      if (targetStatus === focusColumn) return;
+    (jobId: string, targetStatus: ColumnName) => {
+      if (targetStatus === focusColumn) {
+        return;
+      }
 
       setColumns((prev) => {
         const fromColIdx = prev.findIndex((c) => c.jobs.some((j) => j.ID === jobId));
@@ -273,38 +318,41 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         const fromList = [...prev[fromColIdx].jobs];
         const idx = fromList.findIndex((j) => j.ID === jobId);
         if (idx === -1) return prev;
-        const [moved] = fromList.splice(idx, 1);
 
+        const [moved] = fromList.splice(idx, 1);
         const toList = [...prev[toColIdx].jobs];
-        const updated: Job = { ...moved, Status: targetStatus };
+        const updated: Job = {...moved, Status: targetStatus};
         toList.unshift(updated);
 
         const next = [...prev];
-        next[fromColIdx] = { ...next[fromColIdx], jobs: fromList };
-        next[toColIdx] = { ...next[toColIdx], jobs: toList };
+        next[fromColIdx] = {...next[fromColIdx], jobs: fromList};
+        next[toColIdx] = {...next[toColIdx], jobs: toList};
         return next;
       });
 
+      // optimistic background write
       const all = columnsRef.current.flatMap((c) => c.jobs);
       const movedJob = all.find((j) => j.ID === jobId);
       if (movedJob) {
-        void updateStatusInSheets({ ...movedJob, Status: targetStatus }, targetStatus);
+        void updateStatusInSheets({...movedJob, Status: targetStatus}, targetStatus);
       }
     },
-    [focusColumn, updateStatusInSheets]
+    [focusColumn, updateStatusInSheets],
   );
 
-  // ===== SAVE from Modal (OPTIMISTIC local update + Sheets) =====
+  /** Save Notes/Interview Date/Contacts/Tag (optimistic local patch + Apps Script GET). */
   const handleSaveModal = useCallback(
     async (updatedJob: Job): Promise<void> => {
+      // local optimistic patch
       setColumns((prev) =>
         prev.map((c) => ({
           ...c,
-          jobs: c.jobs.map((j) => (j.ID === updatedJob.ID ? { ...j, ...updatedJob } : j)),
-        }))
+          jobs: c.jobs.map((j) => (j.ID === updatedJob.ID ? {...j, ...updatedJob} : j)),
+        })),
       );
-      setSelectedJob((sj) => (sj && sj.ID === updatedJob.ID ? { ...sj, ...updatedJob } : sj));
+      setSelectedJob((sj) => (sj && sj.ID === updatedJob.ID ? {...sj, ...updatedJob} : sj));
 
+      // persist to Sheets
       if (updatedJob._row) {
         const params = new URLSearchParams({
           row: String(updatedJob._row),
@@ -319,27 +367,31 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         try {
           const res = await fetch(`${webAppUrl}?${params.toString()}`);
           if (!res.ok) {
-            // eslint-disable-next-line no-console
+             
             console.error('Sheets save failed:', res.status, await res.text());
           }
         } catch (e) {
-          // eslint-disable-next-line no-console
+           
           console.error('Sheets fetch error:', e);
         }
       }
     },
-    [apiKey]
+    [apiKey],
   );
 
-  // ===== DnD (when Focus Mode is OFF) =====
+  /* ------- DnD helpers (classic mode) ------- */
+
   const moveWithinColumn = useCallback((colIndex: number, fromIdx: number, toIdx: number) => {
-    if (fromIdx === toIdx) return;
+    if (fromIdx === toIdx) {
+      return;
+    }
+
     setColumns((prev) => {
       const next = [...prev];
       const list = [...next[colIndex].jobs];
       const [moved] = list.splice(fromIdx, 1);
       list.splice(toIdx, 0, moved);
-      next[colIndex] = { ...next[colIndex], jobs: list };
+      next[colIndex] = {...next[colIndex], jobs: list};
       return next;
     });
   }, []);
@@ -351,30 +403,33 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
       const targetList = [...current[toCol].jobs];
 
       const idxInSource = sourceList.findIndex((j) => j.ID === jobId);
-      if (idxInSource === -1) return;
+      if (idxInSource === -1) {
+        return;
+      }
 
       const [moved] = sourceList.splice(idxInSource, 1);
       const newStatus = current[toCol].name;
-      const updated: Job = { ...moved, Status: newStatus };
+      const updated: Job = {...moved, Status: newStatus};
 
       const toIndex = Math.min(Math.max(toIndexRaw, 0), targetList.length);
       targetList.splice(toIndex, 0, updated);
 
       setColumns((prev) => {
         const next = [...prev];
-        next[fromCol] = { ...next[fromCol], jobs: sourceList };
-        next[toCol] = { ...next[toCol], jobs: targetList };
+        next[fromCol] = {...next[fromCol], jobs: sourceList};
+        next[toCol] = {...next[toCol], jobs: targetList};
         return next;
       });
 
       void updateStatusInSheets(moved, newStatus);
     },
-    [updateStatusInSheets]
+    [updateStatusInSheets],
   );
 
   const findFromColByJobId = useCallback(
-    (jobId: string): number => columnsRef.current.findIndex((c) => c.jobs.some((j) => j.ID === jobId)),
-    []
+    (jobId: string): number =>
+      columnsRef.current.findIndex((c) => c.jobs.some((j) => j.ID === jobId)),
+    [],
   );
 
   const handleAdd = useCallback(
@@ -382,14 +437,18 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
       const itemEl = evt.item as HTMLElement;
       const jobId = itemEl.dataset.id || '';
       const toIndex = evt.newIndex ?? 0;
-      if (!jobId) return;
+      if (!jobId) {
+        return;
+      }
 
       const fromColIndex = findFromColByJobId(jobId);
-      if (fromColIndex < 0 || fromColIndex === targetColIndex) return;
+      if (fromColIndex < 0 || fromColIndex === targetColIndex) {
+        return;
+      }
 
       moveBetweenColumns(fromColIndex, targetColIndex, toIndex, jobId);
     },
-    [findFromColByJobId, moveBetweenColumns]
+    [findFromColByJobId, moveBetweenColumns],
   );
 
   const handleUpdate = useCallback(
@@ -398,8 +457,10 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
       const toIdx = evt.newIndex ?? 0;
       moveWithinColumn(colIndex, fromIdx, toIdx);
     },
-    [moveWithinColumn]
+    [moveWithinColumn],
   );
+
+  /* ------- Focus mode derived ------- */
 
   const focusList = useMemo(() => {
     const col = filteredColumns.find((c) => c.name === focusColumn);
@@ -411,37 +472,47 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   const goNext = useCallback(() => {
     setFocusIndex((i) => Math.min(i + 1, Math.max(focusList.length - 1, 0)));
   }, [focusList.length]);
+
   const goPrev = useCallback(() => {
     setFocusIndex((i) => Math.max(i - 1, 0));
   }, []);
+
+  // keep index in range on list changes
   useEffect(() => {
     setFocusIndex((i) => Math.min(i, Math.max(focusList.length - 1, 0)));
   }, [focusList.length]);
 
-  const onCardClick = useCallback((job: Job) => {
-    setSelectedJob(job);
-    setIsModalOpen(true);
-  }, []);
-
+  // keyboard navigation in focus mode
   useEffect(() => {
-    if (!focusMode) return;
+    if (!focusMode) {
+      return;
+    }
+
     const onKey = (e: KeyboardEvent) => {
-      if (!currentJob) return;
-      if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); return; }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev(); return; }
+      if (!currentJob) {
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goNext();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goPrev();
+        return;
+      }
     };
+
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [focusMode, currentJob, goNext, goPrev, moveJobToStatus]);
 
-  // Helper to render a status action with disabled state if equals focusColumn
-  const renderAction = (
-    label: string,
-    status: ColumnName,
-    icon: ReactNode,
-    title?: string
-  ) => {
+  /* ------- Quick action button renderer ------- */
+
+  const renderAction = (label: string, status: ColumnName, icon: ReactNode, title?: string) => {
     const disabled = focusColumn === status;
+
     return (
       <button
         key={status}
@@ -450,7 +521,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
           moveJobToStatus(currentJob.ID, status);
         }}
         className="btn"
-        style={btnStyle({ disabled })}
+        style={btnStyle({disabled})}
         title={title || label}
         disabled={disabled}
         aria-disabled={disabled}
@@ -460,10 +531,11 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
     );
   };
 
+  /* ========== Render ========== */
   return (
     <div className="kanban-page">
       {/* Header */}
-      <div className="kanban__header" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div className="kanban__header" style={{gap: '0.5rem', flexWrap: 'wrap'}}>
         <div className="kanban__brand">JOB PARSER</div>
 
         <div className="kanban__search">
@@ -501,11 +573,16 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         <div className="kanban__brand">Discord: amiduck</div>
       </div>
 
-      {/* LOADING / ERROR UI */}
+      {/* Loading & error states */}
       {isLoading ? (
         <div className="kanban kanban--loading">
           <div className="loader">
-            <div className="loader__spinner" role="status" aria-live="polite" aria-label="Loading jobs" />
+            <div
+              className="loader__spinner"
+              role="status"
+              aria-live="polite"
+              aria-label="Loading jobs"
+            />
             <div className="loader__text">Loading jobs…</div>
           </div>
         </div>
@@ -518,7 +595,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
         </div>
       ) : (
         <>
-          {/* Focus-mode badge bar (per-column counts & quick switch) */}
+          {/* Focus-mode badge bar */}
           {focusMode && (
             <div className="focus-stats">
               {COLUMN_NAMES.map((n) => (
@@ -527,7 +604,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                   type="button"
                   className={`focus-stats__item ${n === focusColumn ? 'is-active' : ''}`}
                   onClick={() => {
-                    setFocusColumn(n as ColumnName);
+                    setFocusColumn(n);
                     setFocusIndex(0);
                   }}
                   title={`${n} (${counts[n] ?? 0})`}
@@ -539,12 +616,12 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
             </div>
           )}
 
-          {/* Focus Mode: one card + quick actions */}
+          {/* Focus Mode (single card + actions) */}
           {focusMode ? (
-            <div className="kanban" style={{ paddingTop: '0.5rem' }}>
+            <div className="kanban" style={{paddingTop: '0.5rem'}}>
               <div
                 className={`kanban__column ${statusMod(focusColumn)}`}
-                style={{ flex: '1 1 520px', maxWidth: 760, margin: '0 auto' }}
+                style={{flex: '1 1 520px', maxWidth: 760, margin: '0 auto'}}
               >
                 <div className="kanban__column-header">
                   <h2 className="kanban__column-title">
@@ -552,17 +629,15 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                     <span className="kanban__column-icon">{iconByName(focusColumn)}</span>
                   </h2>
 
-                  <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                  <div style={{display: 'inline-flex', gap: '0.4rem', alignItems: 'center'}}>
                     <span className="kanban__column-count">{counts[focusColumn] ?? 0}</span>
-                    {focusMode && (
-                      <span
-                        className="kanban__column-count"
-                        aria-live="polite"
-                        style={{ opacity: 0.9, background: '#3b3e55', color: '#fff' }}
-                      >
-                        {focusList.length ? `${focusIndex + 1}/${focusList.length}` : '0/0'}
-                      </span>
-                    )}
+                    <span
+                      className="kanban__column-count"
+                      aria-live="polite"
+                      style={{opacity: 0.9, background: '#3b3e55', color: '#fff'}}
+                    >
+                      {focusList.length ? `${focusIndex + 1}/${focusList.length}` : '0/0'}
+                    </span>
                   </div>
                 </div>
 
@@ -573,10 +648,12 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                         <FaInbox />
                       </span>
                       <div className="kanban__empty-title">Nothing here</div>
-                      <div className="kanban__empty-sub">Choose another column or turn off Focus mode</div>
+                      <div className="kanban__empty-sub">
+                        Choose another column or turn off Focus mode
+                      </div>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <div style={{display: 'grid', gap: '0.75rem'}}>
                       <div>
                         <KanbanCard
                           id={currentJob.ID}
@@ -594,7 +671,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                       </div>
 
                       {/* Quick actions */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{display: 'flex', flexWrap: 'wrap', gap: '0.5rem'}}>
                         {renderAction('CV SENT', 'CV SENT', <FaEnvelope />, 'I submitted my CV')}
                         {renderAction('FOLLOWED UP', 'FOLLOWED UP', <FaRedoAlt />)}
                         {renderAction('INTERVIEW', 'INTERVIEW', <FaPhoneAlt />)}
@@ -607,6 +684,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                       {(() => {
                         const isPrevDisabled = focusIndex <= 0;
                         const isNextDisabled = focusIndex >= focusList.length - 1;
+
                         return (
                           <div className="focus-nav" role="group" aria-label="Focus navigation">
                             <button
@@ -657,18 +735,24 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
 
                   <ReactSortable<Job>
                     list={col.jobs}
-                    setList={() => { /* no-op */ }}
+                    setList={() => {
+                      /* no-op during dragover to avoid extra renders */
+                    }}
                     group={
                       dndDisabled
-                        ? { name: 'jobs', pull: false, put: false }
-                        : { name: 'jobs', pull: true, put: true }
+                        ? {name: 'jobs', pull: false, put: false}
+                        : {name: 'jobs', pull: true, put: true}
                     }
                     disabled={dndDisabled}
                     animation={col.jobs.length >= 200 ? 0 : 120}
                     easing="cubic-bezier(.2,.7,.3,1)"
                     className={`kanban__list${dndDisabled ? ' kanban__list--disabled' : ''}`}
-                    onAdd={(evt) => { if (!dndDisabled) handleAdd(evt as SortableEvent, colIndex); }}
-                    onUpdate={(evt) => { if (!dndDisabled) handleUpdate(evt as SortableEvent, colIndex); }}
+                    onAdd={(evt) => {
+                      if (!dndDisabled) handleAdd(evt as SortableEvent, colIndex);
+                    }}
+                    onUpdate={(evt) => {
+                      if (!dndDisabled) handleUpdate(evt as SortableEvent, colIndex);
+                    }}
                     onStart={() => setIsDragging(true)}
                     onEnd={() => setIsDragging(false)}
                     forceFallback={false}
@@ -737,7 +821,13 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   );
 };
 
-function btnStyle(opts?: { primary?: boolean; muted?: boolean; disabled?: boolean }): React.CSSProperties {
+/* ========== Small UI helpers ========== */
+
+function btnStyle(opts?: {
+  primary?: boolean;
+  muted?: boolean;
+  disabled?: boolean;
+}): React.CSSProperties {
   const base: React.CSSProperties = {
     padding: '0.5rem 0.75rem',
     borderRadius: 8,
@@ -746,17 +836,21 @@ function btnStyle(opts?: { primary?: boolean; muted?: boolean; disabled?: boolea
     color: '#f1f1f1',
     cursor: 'pointer',
   };
+
   if (opts?.primary) {
     base.background = '#b5bcff';
     base.color = '#111321';
     base.fontWeight = 800;
   }
-  if (opts?.muted) base.opacity = 0.8;
+  if (opts?.muted) {
+    base.opacity = 0.8;
+  }
   if (opts?.disabled) {
     base.opacity = 0.45;
     base.cursor = 'not-allowed';
     base.filter = 'grayscale(0.2)';
   }
+
   return base;
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useEffect, useState} from 'react';
 import './App.scss';
 import KanbanBoard from './components/KanbanBoard/KanbanBoard';
 import LoginForm from './components/LoginForm/LoginForm';

@@ -1,24 +1,24 @@
 .button {
   width: 100%;
   height: 44px;
-
   font-size: 26px;
   font-weight: 700;
   border-radius: 4px;
-
   cursor: pointer;
 }
 
 .button--main {
   color: #e8e8e8;
   border-bottom: 4px solid #446c7c;
-  background-color: #4D7A8C;
-
-  transition: color 0.3s, box-shadow 0.3s, background-color 0.3s;
+  background-color: #4d7a8c;
+  transition:
+    color 0.3s,
+    box-shadow 0.3s,
+    background-color 0.3s;
 
   &:hover {
     color: white;
-    box-shadow: rgb(77, 122, 140) 0 2px 7px 0;
+    box-shadow: rgb(77 122 140) 0 2px 7px 0;
   }
 
   &:active {
@@ -29,10 +29,10 @@
 
 .button--main-secondary {
   color: #e8e8e8;
-
-  background-color: #02C39A;
-
-  transition: color 0.3s, background-color 0.3s;
+  background-color: #02c39a;
+  transition:
+    color 0.3s,
+    background-color 0.3s;
 
   &:hover {
     background-color: #00b790;
@@ -51,10 +51,10 @@
 
 .button--cancel {
   color: #e8e8e8;
-
   background-color: #ff2d55;
-
-  transition: color 0.3s, background-color 0.3s;
+  transition:
+    color 0.3s,
+    background-color 0.3s;
 
   &:hover {
     background-color: #f12a50;
@@ -68,10 +68,10 @@
 
 .button--refresh {
   color: #252525;
-
-  background-color: #F8F0FB;
-
-  transition: color 0.3s, background-color 0.3s;
+  background-color: #f8f0fb;
+  transition:
+    color 0.3s,
+    background-color 0.3s;
 
   &:hover {
     background-color: #ebe4ee;

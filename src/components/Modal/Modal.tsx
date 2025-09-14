@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-
+import React, {useCallback, useEffect, useId, useRef, useState} from 'react';
 import './Modal.scss';
 
 type Job = {
@@ -14,7 +13,7 @@ type Job = {
   Notes?: string;
   'Interview Date'?: string;
   Contacts?: string;
-  Tag?: string;            // <— only Tag
+  Tag?: string; // only Tag
   _row?: number;
 };
 
@@ -25,25 +24,26 @@ type Props = {
   onSave: (updatedJob: Job) => void;
 };
 
-const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
+const Modal: React.FC<Props> = ({isOpen, onClose, job, onSave}) => {
   const [notes, setNotes] = useState<string>('');
   const [interviewDate, setInterviewDate] = useState<string>('');
   const [contacts, setContacts] = useState<string>('');
-  const [tag, setTag] = useState<string>(''); // NEW
+  const [tag, setTag] = useState<string>('');
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLTextAreaElement>(null);
+  const tagListId = useId();
 
-  // Sync local form state when opening
+  // синхронізуємо локальний стан при відкритті й зміні job
   useEffect(() => {
     if (!isOpen || !job) return;
-    setNotes(job.Notes || '');
-    setInterviewDate(job['Interview Date'] || '');
-    setContacts(job.Contacts || '');
-    setTag(job.Tag || '');
+    setNotes(job.Notes ?? '');
+    setInterviewDate(job['Interview Date'] ?? '');
+    setContacts(job.Contacts ?? '');
+    setTag(job.Tag ?? '');
   }, [isOpen, job]);
 
-  // Lock page scroll while modal is open
+  // блокуємо скрол сторінки, поки модалка відкрита
   useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
@@ -53,31 +53,44 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
     };
   }, [isOpen]);
 
-  // Focus and Esc handling
+  // автофокус + Esc
   useEffect(() => {
     if (!isOpen) return;
-    setTimeout(() => firstFieldRef.current?.focus(), 0);
+    const t = window.setTimeout(() => firstFieldRef.current?.focus(), 0);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener('keydown', onKey);
+    };
   }, [isOpen, onClose]);
+
+  const stop: React.MouseEventHandler<HTMLDivElement> = useCallback((e) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = useCallback(
+    (e) => {
+      e.preventDefault();
+      if (!job) return;
+      onSave({
+        ...job,
+        Notes: notes,
+        'Interview Date': interviewDate,
+        Contacts: contacts,
+        Tag: tag,
+      });
+      onClose();
+    },
+    [contacts, interviewDate, job, notes, onClose, onSave, tag],
+  );
 
   if (!isOpen || !job) return null;
 
-  const handleSave = (): void => {
-    onSave({
-      ...job,
-      Notes: notes,
-      'Interview Date': interviewDate,
-      Contacts: contacts,
-      Tag: tag, // persist locally
-    });
-    onClose();
-  };
-
-  const stop = (e: React.MouseEvent): void => e.stopPropagation();
+  const hasDescription = Boolean(job.Description && job.Description.trim());
+  const descId = 'job-modal-desc';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -86,6 +99,7 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="job-modal-title"
+        aria-describedby={hasDescription ? descId : undefined}
         onClick={stop}
         ref={dialogRef}
         tabIndex={-1}
@@ -99,12 +113,14 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
 
             <div className="modal__meta">
               {job.Company && <span className="modal__chip">{job.Company}</span>}
+
               {job.Location && (
                 <>
                   <span className="modal__dot">•</span>
                   <span className="modal__muted">{job.Location}</span>
                 </>
               )}
+
               {job.Date && <span className="modal__chip">{job.Date}</span>}
             </div>
           </div>
@@ -120,8 +136,8 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
           </button>
         </header>
 
-        {/* Two-column content */}
-        <div className="modal__content">
+        {/* Content */}
+        <form className="modal__content" onSubmit={handleSubmit}>
           {/* Left: read-only */}
           <section className="modal__section">
             <div className="modal__row">
@@ -131,21 +147,14 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
 
             <div className="modal__block">
               <div className="modal__label">Description</div>
-              <div className="modal__desc">
-                {job.Description && job.Description.trim()
-                  ? job.Description
-                  : 'N/A'}
+              <div className="modal__desc" id={descId}>
+                {hasDescription ? job.Description : 'N/A'}
               </div>
             </div>
 
             {job.Link && (
               <div className="modal__block">
-                <a
-                  className="modal__link"
-                  href={job.Link}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <a className="modal__link" href={job.Link} target="_blank" rel="noreferrer">
                   Open vacancy link →
                 </a>
               </div>
@@ -186,7 +195,6 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
               />
             </label>
 
-            {/* Tag */}
             <label className="modal__field">
               <span className="modal__field-label">Tag</span>
               <input
@@ -195,31 +203,30 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
                 value={tag}
                 onChange={(e) => setTag(e.target.value)}
                 placeholder="e.g. Priority, Remote, Senior"
-                list="modal-tag-suggestions"
+                list={tagListId}
               />
-              {/* optional suggestions */}
-              <datalist id="modal-tag-suggestions">
-                <option>Priority</option>
-                <option>Remote</option>
-                <option>Relocation</option>
-                <option>Senior</option>
-                <option>Junior</option>
+              <datalist id={tagListId}>
+                <option value="Priority" />
+                <option value="Remote" />
+                <option value="Relocation" />
+                <option value="Senior" />
+                <option value="Junior" />
               </datalist>
             </label>
           </section>
-        </div>
 
-        {/* Footer */}
-        <footer className="modal__footer">
-          <div className="modal__footer-actions">
-            <button className="modal__btn modal__btn--ghost" type="button" onClick={onClose}>
-              Cancel
-            </button>
-            <button className="modal__btn modal__btn--primary" type="button" onClick={handleSave}>
-              Save changes
-            </button>
-          </div>
-        </footer>
+          {/* Footer */}
+          <footer className="modal__footer">
+            <div className="modal__footer-actions">
+              <button className="modal__btn modal__btn--ghost" type="button" onClick={onClose}>
+                Cancel
+              </button>
+              <button className="modal__btn modal__btn--primary" type="submit">
+                Save changes
+              </button>
+            </div>
+          </footer>
+        </form>
       </div>
     </div>
   );

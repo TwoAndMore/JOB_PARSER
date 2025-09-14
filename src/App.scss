@@ -1,8 +1,12 @@
-@import "styles/utils/reset.scss";
-@import "styles/utils/_vars.scss";
-@import "styles/utils/_mixins.scss";
+@import url('styles/utils/reset.scss');
+@import url('styles/utils/_vars.scss');
+@import url('styles/utils/_mixins.scss');
 
-html, body, #root { height: 100%; }
+html,
+body,
+#root {
+  height: 100%;
+}
 
 body {
   &::-webkit-scrollbar {
@@ -24,7 +28,6 @@ body {
 
   scrollbar-color: #3a3d57 #181a20;
   scrollbar-width: thin;
-
   background-color: #181a20;
   color: #f1f1f1;
   font-family: 'Segoe UI', sans-serif;
