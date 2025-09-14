@@ -140,9 +140,11 @@ const byDate =
 const SortableItem = React.memo(function SortableItem({
   job,
   onClick,
+  highlight,
 }: {
   job: Job;
   onClick: (job: Job) => void;
+  highlight?: string;
 }) {
   return (
     <div data-id={job.ID}>
@@ -154,6 +156,7 @@ const SortableItem = React.memo(function SortableItem({
         location={job.Location}
         tag={job.Tag}
         link={job.Link}
+        highlight={highlight}
         onClick={() => onClick(job)}
       />
     </div>
@@ -775,6 +778,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
                           location={currentJob.Location}
                           link={currentJob.Link}
                           tag={currentJob.Tag}
+                          highlight={query}
                           onClick={() => {
                             setSelectedJob(currentJob);
                             setIsModalOpen(true);
@@ -911,6 +915,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
                         <SortableItem
                           key={job.ID}
                           job={job}
+                          highlight={query}
                           onClick={(j) => {
                             setSelectedJob(j);
                             setIsModalOpen(true);

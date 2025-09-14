@@ -36,9 +36,8 @@
 
   &:focus-within {
     border-color: rgb(127 140 255 / 45%);
-    box-shadow:
-      0 0 0 3px rgb(127 140 255 / 18%),
-      0 6px 22px rgb(0 0 0 / 45%);
+    box-shadow: 0 0 0 3px rgb(127 140 255 / 18%),
+    0 6px 22px rgb(0 0 0 / 45%);
   }
 
   /* top row (title + external link) */
@@ -51,6 +50,14 @@
     margin: 0;
     padding: 0;
     min-width: 0;
+  }
+
+  &__mark {
+    background-color: #ffe58f; // читабельний підсвіт
+    color: #111321;
+    padding: 0 0.06em;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 8%) inset;
   }
 
   &__title {
@@ -83,11 +90,10 @@
     border-radius: 8px;
     background-color: rgb(157 166 255 / 9%);
     color: #cfd2ff;
-    transition:
-      transform 0.12s ease,
-      background-color 0.2s ease,
-      color 0.2s ease,
-      border-color 0.2s ease;
+    transition: transform 0.12s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
 
     &:hover {
       transform: scale(1.06);
@@ -160,9 +166,8 @@
     line-height: 1;
     text-transform: uppercase;
     white-space: nowrap;
-    box-shadow:
-      0 2px 8px rgb(0 0 0 / 35%),
-      inset 0 0 0 1px rgb(0 0 0 / 6%);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 35%),
+    inset 0 0 0 1px rgb(0 0 0 / 6%);
   }
 
   /* meta row (location / date / tag) */
@@ -226,9 +231,8 @@
   &__meta-item--tag {
     background-color: var(--tag-bg);
     border-color: var(--tag-border);
-    box-shadow:
-      0 0 0 1px var(--tag-border) inset,
-      0 2px 10px var(--tag-glow);
+    box-shadow: 0 0 0 1px var(--tag-border) inset,
+    0 2px 10px var(--tag-glow);
 
     .kanban-card__meta-icon {
       color: var(--tag-icon);
