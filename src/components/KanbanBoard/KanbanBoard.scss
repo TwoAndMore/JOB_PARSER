@@ -348,6 +348,77 @@
   }
 }
 
+.focus-nav {
+  display: grid;
+  grid-template-columns: 30% 70%;
+  gap: 0.5rem;
+}
+
+.focus-nav__btn {
+  width: 100%;
+  height: 44px;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #2a2e42;
+  color: #e6e8ff;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition:
+          background 0.12s ease,
+          transform 0.06s ease,
+          border-color 0.12s ease,
+          box-shadow 0.12s ease;
+
+  &:hover {
+    background: #323654;
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &:disabled,
+  &[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.45;
+    filter: grayscale(0.25);
+    background: #24283a;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+  }
+}
+
+/* Emphasis variants */
+.focus-nav__btn--prev {
+  /* subtle/ghost style */
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #cdd3ff;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+}
+
+.focus-nav__btn--next {
+  /* primary style */
+  background: #b5bcff;
+  color: #111321;
+  border-color: rgba(255, 255, 255, 0.16);
+
+  &:hover:not(:disabled) {
+    background: #c3c9ff;
+  }
+
+  &:disabled {
+    background: #8e96d9;
+    color: #171a2b;
+  }
+}
+
 /* ===== Mobile tweaks ===== */
 @media (max-width: 480px) {
   .kanban {

@@ -106,6 +106,49 @@
     line-height: 1.2;
   }
 
+  &__badge-abs {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    z-index: 2;
+    pointer-events: none;
+    padding: 0.28rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.3px;
+    line-height: 1;
+    white-space: nowrap;
+
+    background: linear-gradient(135deg, #5cffb4, #25e39b);
+    color: #0f1720;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+    text-transform: uppercase;
+  }
+
+  --tag-bg: rgba(255, 181, 72, 0.16);
+  --tag-border: rgba(255, 181, 72, 0.38);
+  --tag-fg: #ffdca3;        /* text */
+  --tag-icon: #ffbf5b;      /* icon */
+  --tag-glow: rgba(255, 181, 72, 0.18);
+
+  &__meta-item--tag {
+    background: var(--tag-bg);
+    border-color: var(--tag-border);
+    box-shadow: 0 0 0 1px var(--tag-border) inset, 0 2px 10px var(--tag-glow);
+  }
+
+  &__meta-item--tag .kanban-card__meta-icon {
+    color: var(--tag-icon);
+  }
+
+  &__meta-item--tag .kanban-card__meta-text {
+    color: var(--tag-fg);
+    /* allow a touch wider text so tags like "Remote • Priority" fit nicely */
+    max-width: 28ch;
+  }
+
   &__chip-icon {
     flex: 0 0 auto;
     font-size: 0.9rem;

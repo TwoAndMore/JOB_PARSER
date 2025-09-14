@@ -37,7 +37,8 @@ type Job = {
   Notes?: string;
   'Interview Date'?: string;
   Contacts?: string;
-  _row?: number; // sheet row (1-based, incl. header)
+  Tag?: string;
+  _row?: number;
 };
 
 type Column = {
@@ -100,6 +101,7 @@ const SortableItem = React.memo(function SortableItem({
         company={job.Company}
         date={job.Date}
         location={job.Location}
+        tag={job.Tag}
         link={job.Link}
         onClick={() => onClick(job)}
       />
@@ -138,13 +140,33 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
 
       if (!data.values || data.values.length === 0) return;
 
-      const [headers, ...rows] = data.values as string[][];
+      // 1) Normalize headers (trim, strip BOM, lowercase for matching)
+      const rawHeaders = data.values[0] as string[];
+      const norm = (s: string) =>
+        s.replace(/^\uFEFF/, '').trim(); // strip BOM + trim
+
+      const headers = rawHeaders.map(norm);
+
+      // 2) Canonicalize certain headers to stable keys used in code
+      //    We keep original casing for everything except the keys we rely on explicitly.
+      const canonicalKey = (h: string) => {
+        const l = h.toLowerCase();
+        if (l === 'tag') return 'Tag';
+        if (l === 'interview date') return 'Interview Date';
+        // add other canonicalizations only if needed
+        return h; // default: keep as-is (trimmed)
+      };
+
+      // 3) Build jobs with canonical keys
+      const rows = (data.values as string[][]).slice(1);
       const jobs: Job[] = rows.map((row, i) => {
-        const obj = Object.fromEntries(
-          headers.map((h, j) => [h, row[j] || ''])
-        ) as Job;
+        const obj: any = {};
+        headers.forEach((h, j) => {
+          const key = canonicalKey(h);
+          obj[key] = row[j] ?? '';
+        });
         obj._row = i + 2; // +1 header, +1 for 1-based
-        return obj;
+        return obj as Job;
       });
 
       setColumns(
@@ -264,6 +286,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
           notes: updatedJob.Notes || '',
           interviewDate: updatedJob['Interview Date'] || '',
           contacts: updatedJob.Contacts || '',
+          tag: updatedJob.Tag || '',
           token: apiKey,
           origin: window.location.origin,
         });
@@ -530,6 +553,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                       date={currentJob.Date}
                       location={currentJob.Location}
                       link={currentJob.Link}
+                      tag={currentJob.Tag}
                       onClick={() => {
                         setSelectedJob(currentJob);
                         setIsModalOpen(true);
@@ -548,18 +572,35 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                   </div>
 
                   {/* Navigation */}
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={goPrev} style={btnStyle({ muted: true })} disabled={focusIndex <= 0}>
-                      ◀︎ Prev
-                    </button>
-                    <button
-                      onClick={goNext}
-                      style={btnStyle({ primary: true })}
-                      disabled={focusIndex >= focusList.length - 1}
-                    >
-                      Next ▶︎
-                    </button>
-                  </div>
+                  {(() => {
+                    const isPrevDisabled = focusIndex <= 0;
+                    const isNextDisabled = focusIndex >= focusList.length - 1;
+                    return (
+                      <div className="focus-nav" role="group" aria-label="Focus navigation">
+                        <button
+                          type="button"
+                          className="focus-nav__btn focus-nav__btn--prev"
+                          onClick={goPrev}
+                          disabled={isPrevDisabled}
+                          aria-disabled={isPrevDisabled}
+                          title={isPrevDisabled ? 'No previous card' : 'Previous (←)'}
+                        >
+                          ◀︎ Prev
+                        </button>
+
+                        <button
+                          type="button"
+                          className="focus-nav__btn focus-nav__btn--next"
+                          onClick={goNext}
+                          disabled={isNextDisabled}
+                          aria-disabled={isNextDisabled}
+                          title={isNextDisabled ? 'No next card' : 'Next (→)'}
+                        >
+                          Next ▶︎
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

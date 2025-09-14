@@ -14,6 +14,7 @@ type Job = {
   Notes?: string;
   'Interview Date'?: string;
   Contacts?: string;
+  Tag?: string;            // <— only Tag
   _row?: number;
 };
 
@@ -28,6 +29,7 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
   const [notes, setNotes] = useState<string>('');
   const [interviewDate, setInterviewDate] = useState<string>('');
   const [contacts, setContacts] = useState<string>('');
+  const [tag, setTag] = useState<string>(''); // NEW
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLTextAreaElement>(null);
@@ -38,6 +40,7 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
     setNotes(job.Notes || '');
     setInterviewDate(job['Interview Date'] || '');
     setContacts(job.Contacts || '');
+    setTag(job.Tag || '');
   }, [isOpen, job]);
 
   // Lock page scroll while modal is open
@@ -69,6 +72,7 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
       Notes: notes,
       'Interview Date': interviewDate,
       Contacts: contacts,
+      Tag: tag, // persist locally
     });
     onClose();
   };
@@ -86,7 +90,7 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
         ref={dialogRef}
         tabIndex={-1}
       >
-        {/* Header (kept as before, but date chip moved here; left footer badge removed) */}
+        {/* Header */}
         <header className="modal__header">
           <div className="modal__title-wrap">
             <h2 className="modal__title" id="job-modal-title">
@@ -94,18 +98,13 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
             </h2>
 
             <div className="modal__meta">
-              {/* Company chip (kept) */}
               {job.Company && <span className="modal__chip">{job.Company}</span>}
-
-              {/* Location text (kept) */}
               {job.Location && (
                 <>
                   <span className="modal__dot">•</span>
                   <span className="modal__muted">{job.Location}</span>
                 </>
               )}
-
-              {/* Date chip moved from footer to here */}
               {job.Date && <span className="modal__chip">{job.Date}</span>}
             </div>
           </div>
@@ -121,16 +120,15 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
           </button>
         </header>
 
-        {/* Two-column content (unchanged layout) */}
+        {/* Two-column content */}
         <div className="modal__content">
-          {/* Left column: read-only details */}
+          {/* Left: read-only */}
           <section className="modal__section">
             <div className="modal__row">
               <span className="modal__label">Status</span>
               <span className="modal__value">{job.Status || '—'}</span>
             </div>
 
-            {/* Scrollable description; the height/overflow is handled in SCSS via .modal__desc */}
             <div className="modal__block">
               <div className="modal__label">Description</div>
               <div className="modal__desc">
@@ -154,7 +152,7 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
             )}
           </section>
 
-          {/* Right column: editable form */}
+          {/* Right: editable */}
           <section className="modal__section modal__section--form">
             <label className="modal__field">
               <span className="modal__field-label">Notes</span>
@@ -187,10 +185,31 @@ const Modal: React.FC<Props> = ({ isOpen, onClose, job, onSave }) => {
                 placeholder="Recruiter name, email, phone…"
               />
             </label>
+
+            {/* Tag */}
+            <label className="modal__field">
+              <span className="modal__field-label">Tag</span>
+              <input
+                className="modal__input"
+                type="text"
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                placeholder="e.g. Priority, Remote, Senior"
+                list="modal-tag-suggestions"
+              />
+              {/* optional suggestions */}
+              <datalist id="modal-tag-suggestions">
+                <option>Priority</option>
+                <option>Remote</option>
+                <option>Relocation</option>
+                <option>Senior</option>
+                <option>Junior</option>
+              </datalist>
+            </label>
           </section>
         </div>
 
-        {/* Footer: only actions now (badges removed) */}
+        {/* Footer */}
         <footer className="modal__footer">
           <div className="modal__footer-actions">
             <button className="modal__btn modal__btn--ghost" type="button" onClick={onClose}>
