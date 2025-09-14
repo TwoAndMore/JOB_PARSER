@@ -50,7 +50,7 @@ type Column = {
 type Props = {
   apiKey: string;
   spreadsheetId: string;
-  range: string; // e.g. "Sheet1!A:K"
+  range: string; // e.g. "Аркуш1!A:N"
 };
 
 const COLUMN_NAMES = [
@@ -62,6 +62,28 @@ const COLUMN_NAMES = [
   'OFFER',
   'ARCHIVE',
 ] as const;
+
+type ColumnName = typeof COLUMN_NAMES[number];
+
+const safeLS = {
+  get(key: string): string | null {
+    try {
+      return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, val: string): void {
+    try {
+      if (typeof window !== 'undefined') window.localStorage.setItem(key, val);
+    } catch {
+      /* ignore */
+    }
+  },
+};
+
+const isColumnName = (s: unknown): s is ColumnName =>
+  typeof s === 'string' && (COLUMN_NAMES as readonly string[]).includes(s);
 
 const iconByName = (name: string): ReactNode => {
   switch (name) {
@@ -118,9 +140,17 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [query, setQuery] = useState<string>('');
 
-  // Focus Mode (process one job at a time)
-  const [focusMode, setFocusMode] = useState<boolean>(true);
-  const [focusColumn, setFocusColumn] = useState<string>('NEW');
+  // Focus Mode (process one job at a time) — restored from localStorage on first render
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    const v = safeLS.get('kanban.focusMode');
+    return v === null ? true : v === '1';
+  });
+
+  const [focusColumn, setFocusColumn] = useState<ColumnName>(() => {
+    const v = safeLS.get('kanban.focusColumn');
+    return isColumnName(v) ? v : 'NEW';
+  });
+
   const [focusIndex, setFocusIndex] = useState<number>(0);
 
   const columnsRef = useRef(columns);
@@ -128,6 +158,15 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
 
   const webAppUrl =
     'https://script.google.com/macros/s/AKfycbyz0gfeR1cGeoViYk5WiqQIVEBzL46boDHblwLRUfUD3-9G-ASUgek_7zJHCwmSjQlXBw/exec';
+
+  // Persist focusMode / focusColumn
+  useEffect(() => {
+    safeLS.set('kanban.focusMode', focusMode ? '1' : '0');
+  }, [focusMode]);
+
+  useEffect(() => {
+    safeLS.set('kanban.focusColumn', focusColumn);
+  }, [focusColumn]);
 
   // Load from Google Sheets
   useEffect(() => {
@@ -140,21 +179,17 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
 
       if (!data.values || data.values.length === 0) return;
 
-      // 1) Normalize headers (trim, strip BOM, lowercase for matching)
+      // 1) Normalize headers (trim, strip BOM)
       const rawHeaders = data.values[0] as string[];
-      const norm = (s: string) =>
-        s.replace(/^\uFEFF/, '').trim(); // strip BOM + trim
-
+      const norm = (s: string) => s.replace(/^\uFEFF/, '').trim();
       const headers = rawHeaders.map(norm);
 
       // 2) Canonicalize certain headers to stable keys used in code
-      //    We keep original casing for everything except the keys we rely on explicitly.
       const canonicalKey = (h: string) => {
         const l = h.toLowerCase();
         if (l === 'tag') return 'Tag';
         if (l === 'interview date') return 'Interview Date';
-        // add other canonicalizations only if needed
-        return h; // default: keep as-is (trimmed)
+        return h; // keep as-is (trimmed)
       };
 
       // 3) Build jobs with canonical keys
@@ -428,7 +463,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
   // Helper to render a status action with disabled state if equals focusColumn
   const renderAction = (
     label: string,
-    status: typeof COLUMN_NAMES[number],
+    status: ColumnName,
     icon: ReactNode,
     title?: string
   ) => {
@@ -571,7 +606,7 @@ const KanbanBoard: React.FC<Props> = ({ apiKey, spreadsheetId, range }) => {
                     {renderAction('ARCHIVE', 'ARCHIVE', <FaArchive />)}
                   </div>
 
-                  {/* Navigation */}
+                  {/* Navigation (30% / 70%) */}
                   {(() => {
                     const isPrevDisabled = focusIndex <= 0;
                     const isNextDisabled = focusIndex >= focusList.length - 1;
