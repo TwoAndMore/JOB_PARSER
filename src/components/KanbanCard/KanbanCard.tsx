@@ -1,5 +1,12 @@
 import React, {type KeyboardEvent, useCallback, useMemo} from 'react';
-import {FaBuilding, FaCalendarAlt, FaExternalLinkAlt, FaMapMarkerAlt, FaTag} from 'react-icons/fa';
+import {
+  FaBuilding,
+  FaCalendarAlt,
+  FaExternalLinkAlt,
+  FaMapMarkerAlt,
+  FaPaperclip,
+  FaTag,
+} from 'react-icons/fa';
 import './KanbanCard.scss';
 
 type Props = {
@@ -11,9 +18,8 @@ type Props = {
   readonly link?: string;
   readonly tag?: string;
   readonly onClick?: () => void;
-
-  /** рядок пошуку для підсвітки збігів у title/company */
   readonly highlight?: string;
+  readonly hasNotes?: boolean;
 };
 
 /** Парсинг "DD.MM.YYYY" (толерує -, /) у Date або null */
@@ -74,14 +80,14 @@ const renderWithMark = (text?: string, rx?: RegExp | null): React.ReactNode => {
       </mark>,
     );
     lastIdx = end;
-    if (rx.lastIndex === start) rx.lastIndex++; // запобігаємо зацикленню на zero-width
+    if (rx.lastIndex === start) rx.lastIndex++;
   }
   if (lastIdx < text.length) out.push(text.slice(lastIdx));
   return out;
 };
 
 const KanbanCard: React.FC<Props> = React.memo(
-  ({id, title, company, date, location, link, tag, onClick, highlight}) => {
+  ({id, title, company, date, location, link, tag, onClick, highlight, hasNotes}) => {
     const recent = useMemo(() => isRecent(date, 2), [date]);
     const rx = useMemo(() => makeHighlightRegex(highlight), [highlight]);
 
@@ -109,6 +115,16 @@ const KanbanCard: React.FC<Props> = React.memo(
         {recent && (
           <span className="kanban-card__badge-abs" aria-label="Added in the last 2 days">
             NEW
+          </span>
+        )}
+
+        {hasNotes && (
+          <span
+            className="kanban-card__badge-abs kanban-card__badge-abs--notes"
+            aria-label="Has notes"
+            title="Has notes"
+          >
+            <FaPaperclip className="kanban-card__badge-icon" />
           </span>
         )}
 

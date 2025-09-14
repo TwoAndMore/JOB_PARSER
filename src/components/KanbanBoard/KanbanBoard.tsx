@@ -157,6 +157,7 @@ const SortableItem = React.memo(function SortableItem({
         tag={job.Tag}
         link={job.Link}
         highlight={highlight}
+        hasNotes={Boolean(job.Notes && job.Notes.trim())}
         onClick={() => onClick(job)}
       />
     </div>
@@ -779,6 +780,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
                           link={currentJob.Link}
                           tag={currentJob.Tag}
                           highlight={query}
+                          hasNotes={Boolean(currentJob.Notes && currentJob.Notes.trim())}
                           onClick={() => {
                             setSelectedJob(currentJob);
                             setIsModalOpen(true);
