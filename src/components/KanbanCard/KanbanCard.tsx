@@ -90,6 +90,7 @@ const KanbanCard: React.FC<Props> = React.memo(
   ({id, title, company, date, location, link, tag, onClick, highlight, hasNotes}) => {
     const recent = useMemo(() => isRecent(date, 2), [date]);
     const rx = useMemo(() => makeHighlightRegex(highlight), [highlight]);
+    const isSelf = id.startsWith('self-');
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLDivElement>) => {
@@ -104,7 +105,7 @@ const KanbanCard: React.FC<Props> = React.memo(
 
     return (
       <div
-        className="kanban-card"
+        className={`kanban-card${isSelf ? ' kanban-card--self' : ''}`}
         data-id={id}
         role="button"
         tabIndex={0}

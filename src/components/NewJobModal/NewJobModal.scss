@@ -1,0 +1,321 @@
+/* NewJobModal.scss */
+/* Порядок: позиціонування → layout → відступи → візуал → типографіка → interaction */
+
+.newjob-overlay {
+  /* position */
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+
+  /* layout */
+  display: grid;
+  place-items: center;
+
+  /* space */
+  margin: 0;
+  padding: 2rem;
+
+  /* visuals */
+  background-color: rgb(0 0 0 / 45%);
+  backdrop-filter: blur(2px);
+}
+
+.newjob {
+  /* position */
+  position: relative;
+  z-index: 1101;
+
+  /* layout */
+  display: flex;
+  flex-direction: column;
+  width: min(980px, 96vw);
+  max-height: 92vh;
+  overflow: hidden;
+
+  /* space */
+  margin: 0;
+
+  /* visuals */
+  background-color: #202331;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 55%),
+  0 0 0 1px rgb(157 166 255 / 6%) inset;
+  color: #f1f1f1;
+
+  /* interaction */
+  transition: transform 0.16s ease, opacity 0.16s ease;
+
+  &__header {
+    /* position */
+    position: sticky;
+    top: 0;
+    z-index: 2;
+
+    /* layout */
+    display: grid;
+    grid-template-columns: 1fr auto 40px; /* title | actions-left | close */
+    align-items: center;
+
+    /* space */
+    padding: 1rem 1.25rem 0.75rem;
+
+    /* visuals */
+    background: linear-gradient(180deg, rgb(32 35 49 / 98%), rgb(32 35 49 / 92%));
+    border-bottom: 1px solid rgb(255 255 255 / 6%);
+  }
+
+  &__title {
+    /* space */
+    margin: 0;
+
+    /* type */
+    color: #b9c2ff;
+    font-size: 1.35rem;
+    font-weight: 900;
+    letter-spacing: 0.2px;
+  }
+
+  &__actions-left {
+    /* layout */
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    /* space */
+    margin: 0;
+    padding: 0;
+    justify-self: end;
+  }
+
+  &__close {
+    /* layout */
+    display: inline-grid;
+    place-items: center;
+
+    /* space */
+    width: 40px;
+    height: 40px;
+    padding: 0;
+
+    /* visuals */
+    background-color: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #d0d4ff;
+
+    /* type */
+    font-size: 1.8rem;
+    line-height: 1;
+
+    /* interaction */
+    cursor: pointer;
+    transition: background-color 0.12s ease, transform 0.12s ease;
+
+    &:hover {
+      background-color: rgb(255 255 255 / 8%);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  &__form {
+    /* layout */
+    display: contents; /* щоб header/footer були липкими, а внутрішній скрол на content */
+  }
+
+  &__grid {
+    /* layout */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem;
+
+    /* space */
+    padding: 1rem 1.25rem;
+
+    /* visuals (scrollbar) */
+    scrollbar-width: thin;
+    scrollbar-color: #3b3e55 transparent;
+
+    &::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: #3b3e55;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+  }
+
+  &__field {
+    /* layout */
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    &--full {
+      grid-column: 1 / -1;
+    }
+  }
+
+  &__label {
+    /* space */
+    margin: 0;
+
+    /* type */
+    color: #b7bdd6;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  &__input,
+  &__textarea,
+  &__grid select.newjob__input {
+    /* layout */
+    width: 100%;
+
+    /* space */
+    padding: 0.75rem 0.85rem;
+
+    /* visuals */
+    background-color: #191c28;
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 10px;
+
+    /* type */
+    color: #f1f1f1;
+    font-size: 0.95rem;
+
+    /* interaction */
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+
+    &::placeholder {
+      color: #8f96b3;
+    }
+
+    &:focus {
+      border-color: rgb(157 166 255 / 50%);
+      box-shadow: 0 0 0 3px rgb(157 166 255 / 18%);
+      outline: none;
+    }
+  }
+
+  &__textarea {
+    /* space */
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  &__footer {
+    /* position */
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+
+    /* layout */
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+
+    /* space */
+    padding: 0.75rem 1.25rem;
+
+    /* visuals */
+    background: linear-gradient(0deg, rgb(32 35 49 / 98%), rgb(32 35 49 / 92%));
+    border-top: 1px solid rgb(255 255 255 / 6%);
+  }
+
+  &__btn {
+    /* layout */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    /* space */
+    padding: 0.6rem 0.9rem;
+
+    /* visuals */
+    background-color: #2a2e42;
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 10px;
+
+    /* type */
+    color: #e6e8ff;
+    font-weight: 800;
+
+    /* interaction */
+    cursor: pointer;
+    transition: background-color 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
+
+    &:hover {
+      background-color: #323654;
+    }
+
+    &:active {
+      transform: translateY(1px);
+    }
+
+    &--primary {
+      background-color: #5561ff;
+      border-color: rgb(255 255 255 / 12%);
+      color: #0f1222;
+
+      &:hover {
+        background-color: #6570ff;
+      }
+
+      &[disabled],
+      &[aria-disabled='true'] {
+        opacity: 0.5;
+        cursor: not-allowed;
+        filter: grayscale(0.2);
+      }
+    }
+
+    &--danger {
+      background-color: #ff5b6b;
+      border-color: rgb(255 255 255 / 12%);
+      color: #0f1222;
+
+      &:hover {
+        background-color: #ff6f7d;
+      }
+    }
+  }
+}
+
+/* Self-contained helper: зробити select виглядати так само, як input */
+.newjob__input {
+  appearance: none;
+}
+
+/* Responsive */
+@media (width <= 760px) {
+  .newjob {
+    width: 96vw;
+    max-height: 94vh;
+    border-radius: 12px;
+
+    &__header {
+      grid-template-columns: 1fr 1fr 40px; /* title | actions-left | close */
+      gap: 0.5rem;
+    }
+
+    &__grid {
+      grid-template-columns: 1fr;
+      padding: 0.9rem;
+    }
+
+    &__title {
+      font-size: 1.2rem;
+    }
+  }
+
+  .newjob-overlay {
+    padding: 1rem;
+  }
+}

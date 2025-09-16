@@ -22,9 +22,10 @@ type Props = {
   onClose: () => void;
   job: Job | null;
   onSave: (updatedJob: Job) => void;
+  onEdit?: (job: Job) => void;
 };
 
-const Modal: React.FC<Props> = ({isOpen, onClose, job, onSave}) => {
+const Modal: React.FC<Props> = ({isOpen, onClose, job, onSave, onEdit}) => {
   const [notes, setNotes] = useState<string>('');
   const [interviewDate, setInterviewDate] = useState<string>('');
   const [contacts, setContacts] = useState<string>('');
@@ -87,10 +88,18 @@ const Modal: React.FC<Props> = ({isOpen, onClose, job, onSave}) => {
     [contacts, interviewDate, job, notes, onClose, onSave, tag],
   );
 
+  // відкрити форму редагування (лише для self-*)
+  const handleEdit = useCallback(() => {
+    if (!job || !onEdit) return;
+    onEdit(job);
+    onClose();
+  }, [job, onEdit, onClose]);
+
   if (!isOpen || !job) return null;
 
   const hasDescription = Boolean(job.Description && job.Description.trim());
   const descId = 'job-modal-desc';
+  const canEdit = job.ID.startsWith('self-') && typeof onEdit === 'function';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -215,8 +224,20 @@ const Modal: React.FC<Props> = ({isOpen, onClose, job, onSave}) => {
             </label>
           </section>
 
-          {/* Footer */}
           <footer className="modal__footer">
+            <div className="modal__footer-left">
+              {canEdit && (
+                <button
+                  className="modal__btn"
+                  type="button"
+                  onClick={handleEdit}
+                  title="Edit full details"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+
             <div className="modal__footer-actions">
               <button className="modal__btn modal__btn--ghost" type="button" onClick={onClose}>
                 Cancel

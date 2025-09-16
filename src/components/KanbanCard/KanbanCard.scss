@@ -1,5 +1,13 @@
 /* KanbanCard.scss */
 .kanban-card {
+  --bg1: #2b2f47;
+  --bg2: #3a3f63;
+  --bg1-hover: #3a3f63;
+  --bg2-hover: #2b2f47;
+  --border: rgb(255 255 255 / 8%);
+  --border-hover: rgb(127 140 255 / 25%);
+  --ring: rgb(127 140 255 / 18%);
+
   /* layout */
   position: relative;
   display: grid;
@@ -8,12 +16,12 @@
   /* box */
   margin: 0;
   padding: 0.9rem 0.85rem;
-  border: 1px solid rgb(255 255 255 / 8%);
+  border: 1px solid var(--border);
   border-radius: 14px;
 
   /* visuals */
-  background-color: #2b2f47;
-  background-image: linear-gradient(135deg, #2b2f47, #3a3f63);
+  background-color: var(--bg1);
+  background-image: linear-gradient(135deg, var(--bg1), var(--bg2));
   box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
   color: #fff;
 
@@ -23,9 +31,9 @@
 
   &:hover {
     transform: translateY(-1px);
-    background-color: #3a3f63;
-    background-image: linear-gradient(135deg, #3a3f63, #2b2f47);
-    border-color: rgb(127 140 255 / 25%);
+    background-color: var(--bg1-hover);
+    background-image: linear-gradient(135deg, var(--bg1-hover), var(--bg2-hover));
+    border-color: var(--border-hover);
     box-shadow: 0 6px 22px rgb(0 0 0 / 45%);
   }
 
@@ -35,9 +43,24 @@
   }
 
   &:focus-within {
-    border-color: rgb(127 140 255 / 45%);
-    box-shadow: 0 0 0 3px rgb(127 140 255 / 18%),
+    border-color: var(--border-hover);
+    box-shadow: 0 0 0 3px var(--ring),
     0 6px 22px rgb(0 0 0 / 45%);
+  }
+
+  /* self-created modifier */
+  &.kanban-card--self {
+    --bg1: #284252;
+    --bg2: #3a7b7b;
+    --bg1-hover: #3a7b7b;
+    --bg2-hover: #284252;
+    --border: rgba(72 255 212 / 22%);
+    --border-hover: rgba(72 255 212 / 38%);
+    --ring: rgba(72 255 212 / 20%);
+
+    /* легкий внутрішній обвід для підкреслення "свого" */
+    box-shadow: 0 2px 10px rgb(0 0 0 / 25%),
+    0 0 0 1px rgba(72 255 212 / 10%) inset;
   }
 
   /* top row (title + external link) */
@@ -53,7 +76,7 @@
   }
 
   &__mark {
-    background-color: #ffe58f; // читабельний підсвіт
+    background-color: #ffe58f;
     color: #111321;
     padding: 0 0.06em;
     border-radius: 3px;
@@ -148,7 +171,7 @@
     white-space: normal;
   }
 
-  /* NEW badge (absolute) */
+  /* badges (absolute) */
   &__badge-abs {
     position: absolute;
     top: -8px;
@@ -179,6 +202,7 @@
     place-items: center;
     width: 26px;
     height: 26px;
+    padding: 0;
 
     border-radius: 999px;
     background-color: #c9cffd;
@@ -187,7 +211,6 @@
     border: 1px solid rgb(255 255 255 / 28%);
     box-shadow: 0 2px 8px rgb(0 0 0 / 35%),
     inset 0 0 0 1px rgb(0 0 0 / 6%);
-    padding: 0;
   }
 
   &__badge-icon {

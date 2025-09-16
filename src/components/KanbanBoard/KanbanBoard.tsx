@@ -17,6 +17,7 @@ import {
 import './KanbanBoard.scss';
 import KanbanCard from '../KanbanCard/KanbanCard';
 import Modal from '../Modal/Modal';
+import NewJobModal, {type ColumnName as ModalColumnName, type Job as EditJob,} from '../NewJobModal/NewJobModal';
 
 /* ========== Types ========== */
 
@@ -129,7 +130,6 @@ const byDate =
     const tb = dateToTs(b.Date);
     const aBad = Number.isNaN(ta);
     const bBad = Number.isNaN(tb);
-    // невалідні дати — в кінець
     if (aBad && bBad) return 0;
     if (aBad) return 1;
     if (bBad) return -1;
@@ -179,6 +179,10 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
   const [query, setQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // New / Edit job modal
+  const [isNewJobOpen, setIsNewJobOpen] = useState(false);
+  const [editInitial, setEditInitial] = useState<Partial<Job> | undefined>(undefined);
 
   // Focus mode state (restored from LS on first render)
   const [focusMode, setFocusMode] = useState<boolean>(() => {
@@ -247,7 +251,6 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
       setIsLoading(true);
       setLoadError(null);
 
-      // Always enforce blocks
       if (!apiKey.trim() || !spreadsheetId.trim() || !range.trim()) {
         setColumns(COLUMN_NAMES.map((name) => ({name, icon: iconByName(name), jobs: []})));
         setIsLoading(false);
@@ -272,11 +275,8 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
           return;
         }
 
-        // Normalize headers
         const rawHeaders = data.values[0] as string[];
         const headers = rawHeaders.map((s) => s.replace(/^\uFEFF/, '').trim());
-
-        // Canonicalize known headers to our Job keys
         const canonicalKey = (h: string): keyof RowObject => {
           const l = h.toLowerCase();
           if (l === 'tag') return 'Tag';
@@ -284,7 +284,6 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
           return h as keyof RowObject;
         };
 
-        // Build jobs
         const rows = data.values.slice(1);
         const jobs: Job[] = rows.map((row, i) => {
           const obj: RowObject = {};
@@ -292,7 +291,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
             const key = canonicalKey(h);
             obj[key] = row[j] ?? '';
           });
-          obj._row = i + 2; // +1 for header, +1 for 1-based
+          obj._row = i + 2;
           return obj as Job;
         });
 
@@ -333,7 +332,6 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
       if (order === 'none') {
         return {...c, jobs: filtered};
       }
-      // не мутуємо оригінальний масив
       const sorted = [...filtered].sort(byDate(order));
       return {...c, jobs: sorted};
     });
@@ -349,7 +347,6 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
 
   /* ------- Sheets update helpers ------- */
 
-  /** Update only the Status in Google Sheets (optimistic UI elsewhere). */
   const updateStatusInSheets = useCallback(
     async (job: Job, newStatus: string): Promise<void> => {
       if (!job._row) {
@@ -357,12 +354,12 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
       }
 
       const params = new URLSearchParams({
+        action: 'update',
         row: String(job._row),
         status: newStatus,
         token: apiKey,
         origin: window.location.origin,
       });
-
       try {
         const res = await fetch(`${webAppUrl}?${params.toString()}`);
         if (!res.ok) {
@@ -375,12 +372,35 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
     [apiKey],
   );
 
-  /** Move a job to another status column (cheap list ops; minimal DOM shuffles). */
+  /** Додати/оновити картку в локальному стані у відповідній колонці. */
+  const upsertLocalJob = useCallback((job: Job) => {
+    setColumns((prev) => {
+      // видаляємо з усіх колонок, щоб не дублювалась
+      const pruned = prev.map((c) => ({...c, jobs: c.jobs.filter((j) => j.ID !== job.ID)}));
+      const idx = pruned.findIndex((c) => c.name === ((job.Status as ColumnName) || 'NEW'));
+      if (idx === -1) return prev;
+      const list = [job, ...pruned[idx].jobs];
+      const next = [...pruned];
+      next[idx] = {...next[idx], jobs: list};
+      return next;
+    });
+  }, []);
+
+  /** Видалити локально (для self-*) */
+  const removeLocalJob = useCallback((jobId: string) => {
+    setColumns((prev) => prev.map((c) => ({...c, jobs: c.jobs.filter((j) => j.ID !== jobId)})));
+  }, []);
+
+  /** Відкрити NewJobModal на редагування будь-якої картки. */
+  const openEditFor = useCallback((job: Job) => {
+    setEditInitial(job);
+    setIsNewJobOpen(true);
+  }, []);
+
+  /** Move a job to another status column */
   const moveJobToStatus = useCallback(
     (jobId: string, targetStatus: ColumnName) => {
-      if (targetStatus === focusColumn) {
-        return;
-      }
+      if (targetStatus === focusColumn) return;
 
       setColumns((prev) => {
         const fromColIdx = prev.findIndex((c) => c.jobs.some((j) => j.ID === jobId));
@@ -402,20 +422,23 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
         return next;
       });
 
-      // optimistic background write
       const all = columnsRef.current.flatMap((c) => c.jobs);
       const movedJob = all.find((j) => j.ID === jobId);
       if (movedJob) {
-        void updateStatusInSheets({...movedJob, Status: targetStatus}, targetStatus);
+        const updatedObj = {...movedJob, Status: targetStatus};
+        if (updatedObj._row) {
+          void updateStatusInSheets(updatedObj, targetStatus); // тепер і для self- з _row
+        } else {
+          upsertLocalJob(updatedObj); // якщо ще нема рядка в шиті
+        }
       }
     },
-    [focusColumn, updateStatusInSheets],
+    [focusColumn, updateStatusInSheets, upsertLocalJob],
   );
 
-  /** Save Notes/Interview Date/Contacts/Tag (optimistic local patch + Apps Script GET). */
+  /** Save Notes/Interview Date/Contacts/Tag (optimistic + GET) */
   const handleSaveModal = useCallback(
     async (updatedJob: Job): Promise<void> => {
-      // local optimistic patch
       setColumns((prev) =>
         prev.map((c) => ({
           ...c,
@@ -424,8 +447,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
       );
       setSelectedJob((sj) => (sj && sj.ID === updatedJob.ID ? {...sj, ...updatedJob} : sj));
 
-      // persist to Sheets
-      if (updatedJob._row) {
+      if (!updatedJob.ID.startsWith('self-') && updatedJob._row) {
         const params = new URLSearchParams({
           row: String(updatedJob._row),
           notes: updatedJob.Notes || '',
@@ -449,12 +471,10 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
     [apiKey],
   );
 
-  /* ------- DnD helpers (classic mode) ------- */
+  /* ------- DnD helpers ------- */
 
   const moveWithinColumn = useCallback((colIndex: number, fromIdx: number, toIdx: number) => {
-    if (fromIdx === toIdx) {
-      return;
-    }
+    if (fromIdx === toIdx) return;
 
     setColumns((prev) => {
       const next = [...prev];
@@ -473,9 +493,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
       const targetList = [...current[toCol].jobs];
 
       const idxInSource = sourceList.findIndex((j) => j.ID === jobId);
-      if (idxInSource === -1) {
-        return;
-      }
+      if (idxInSource === -1) return;
 
       const [moved] = sourceList.splice(idxInSource, 1);
       const newStatus = current[toCol].name;
@@ -491,9 +509,13 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
         return next;
       });
 
-      void updateStatusInSheets(moved, newStatus);
+      if (moved._row) {
+        void updateStatusInSheets(updated, newStatus); // тепер і для self- з _row
+      } else {
+        upsertLocalJob(updated);
+      }
     },
-    [updateStatusInSheets],
+    [updateStatusInSheets, upsertLocalJob],
   );
 
   const findFromColByJobId = useCallback(
@@ -505,16 +527,19 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
   const handleAdd = useCallback(
     (evt: SortableEvent, targetColIndex: number): void => {
       const itemEl = evt.item as HTMLElement;
-      const jobId = itemEl.dataset.id || '';
+
+      // надійний пошук data-id
+      const jobId =
+        itemEl.getAttribute('data-id') ||
+        (itemEl as any).dataset?.id ||
+        (itemEl.querySelector('[data-id]') as HTMLElement | null)?.getAttribute('data-id') ||
+        '';
+
       const toIndex = evt.newIndex ?? 0;
-      if (!jobId) {
-        return;
-      }
+      if (!jobId) return;
 
       const fromColIndex = findFromColByJobId(jobId);
-      if (fromColIndex < 0 || fromColIndex === targetColIndex) {
-        return;
-      }
+      if (fromColIndex < 0 || fromColIndex === targetColIndex) return;
 
       moveBetweenColumns(fromColIndex, targetColIndex, toIndex, jobId);
     },
@@ -547,21 +572,15 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
     setFocusIndex((i) => Math.max(i - 1, 0));
   }, []);
 
-  // keep index in range on list changes
   useEffect(() => {
     setFocusIndex((i) => Math.min(i, Math.max(focusList.length - 1, 0)));
   }, [focusList.length]);
 
-  // keyboard navigation in focus mode
   useEffect(() => {
-    if (!focusMode) {
-      return;
-    }
+    if (!focusMode) return;
 
     const onKey = (e: KeyboardEvent) => {
-      if (!currentJob) {
-        return;
-      }
+      if (!currentJob) return;
       if (e.key === 'ArrowRight') {
         e.preventDefault();
         goNext();
@@ -646,6 +665,100 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
     );
   };
 
+  /* ------- NewJobModal handlers ------- */
+
+  const openCreate = useCallback(() => {
+    setEditInitial({
+      Status: focusMode ? focusColumn : 'NEW',
+      Date: '',
+    });
+    setIsNewJobOpen(true);
+  }, [focusMode, focusColumn]);
+
+  // 🔹 ДОПОВНЕНО: тепер шле запит до Apps Script і закриває модалку
+  const handleCreateOrUpdate = useCallback(
+    async (job: EditJob) => {
+      const j = job as Job;
+
+      // Оптимістично оновлюємо локально
+      upsertLocalJob(j);
+
+      // Якщо є токен — шлемо запит (і для self- також)
+      if (apiKey.trim()) {
+        const action = j._row ? 'update' : 'create';
+        const params = new URLSearchParams({
+          action,
+          token: apiKey,
+          origin: window.location.origin,
+          // якщо update по рядку — передамо row
+          ...(j._row ? {row: String(j._row)} : {}),
+          // payload полів
+          id: j.ID || '',
+          title: j.Title || '',
+          description: j.Description || '',
+          company: j.Company || '',
+          location: j.Location || '',
+          link: j.Link || '',
+          date: j.Date || '',
+          status: j.Status || '',
+          notes: j.Notes || '',
+          interviewDate: j['Interview Date'] || '',
+          contacts: j.Contacts || '',
+          tag: j.Tag || '',
+        });
+
+        try {
+          const res = await fetch(`${webAppUrl}?${params.toString()}`);
+          if (!res.ok) {
+            console.error('Upsert failed:', res.status, await res.text());
+          } else {
+            const json = await res.json().catch(() => ({}));
+            // якщо сервер повернув row — допишемо його
+            if (json && typeof json.row === 'number') {
+              const withRow: Job = {...j, _row: json.row};
+              upsertLocalJob(withRow);
+            }
+          }
+        } catch (e) {
+          console.error('Upsert error:', e);
+        }
+      }
+
+      // Закриваємо модалку створення/редагування
+      setIsNewJobOpen(false);
+    },
+    [apiKey, upsertLocalJob],
+  );
+
+  const handleDeleteSelf = useCallback(
+    async (job: EditJob) => {
+      const id = (job.ID || '').trim();
+      if (!id.startsWith('self-')) return;
+
+      // оптимістично прибираємо з UI
+      removeLocalJob(id);
+
+      try {
+        const params = new URLSearchParams({
+          action: 'delete',
+          id,
+          token: apiKey,
+          origin: window.location.origin,
+        });
+        const row = Number((job as any)._row || 0);
+        if (row >= 2) params.set('row', String(row)); // додатково, якщо відомо
+
+        const res = await fetch(`${webAppUrl}?${params.toString()}`);
+        if (!res.ok) {
+          console.error('Apps Script delete failed:', res.status, await res.text());
+        }
+      } catch (err) {
+        console.error('Delete fetch error:', err);
+      }
+    },
+    [apiKey, removeLocalJob],
+  );
+
   /* ========== Render ========== */
   return (
     <div className="kanban-page">
@@ -684,6 +797,16 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
         {!focusMode && query.trim().length > 0 && (
           <div className="kanban__hint">Clear search to drag & drop</div>
         )}
+
+        {/* ADD button */}
+        <button
+          type="button"
+          onClick={openCreate}
+          title="Add new job"
+          style={btnStyle({primary: true})}
+        >
+          <FaPlus style={{marginRight: 6}} /> Add
+        </button>
 
         <div className="kanban__brand">Discord: amiduck</div>
       </div>
@@ -798,7 +921,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
                         {renderAction('ARCHIVE', 'ARCHIVE', <FaArchive />)}
                       </div>
 
-                      {/* Navigation (30% / 70%) */}
+                      {/* Navigation */}
                       {(() => {
                         const isPrevDisabled = focusIndex <= 0;
                         const isNextDisabled = focusIndex >= focusList.length - 1;
@@ -936,6 +1059,16 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
             onClose={() => setIsModalOpen(false)}
             job={selectedJob}
             onSave={handleSaveModal}
+            onEdit={openEditFor}
+          />
+
+          <NewJobModal
+            isOpen={isNewJobOpen}
+            onClose={() => setIsNewJobOpen(false)}
+            initial={editInitial}
+            columns={COLUMN_NAMES as unknown as ModalColumnName[]}
+            onSubmit={handleCreateOrUpdate}
+            onDelete={handleDeleteSelf}
           />
         </>
       )}

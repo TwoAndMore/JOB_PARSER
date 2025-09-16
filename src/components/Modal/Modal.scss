@@ -25,13 +25,11 @@
     background-color: #202331;
     border: 1px solid rgb(255 255 255 / 8%);
     border-radius: 14px;
-    box-shadow:
-      0 20px 50px rgb(0 0 0 / 55%),
-      0 0 0 1px rgb(157 166 255 / 6%) inset;
+    box-shadow: 0 20px 50px rgb(0 0 0 / 55%),
+    0 0 0 1px rgb(157 166 255 / 6%) inset;
     color: #f1f1f1;
-    transition:
-      transform 0.16s ease,
-      opacity 0.16s ease;
+    transition: transform 0.16s ease,
+    opacity 0.16s ease;
 
     &__header {
       position: sticky;
@@ -97,6 +95,10 @@
       }
     }
 
+    &__footer-left {
+      margin-right: auto;
+    }
+
     &__close {
       width: 40px;
       height: 40px;
@@ -109,9 +111,8 @@
       font-size: 2rem;
       line-height: 1;
       cursor: pointer;
-      transition:
-        background-color 0.12s ease,
-        transform 0.12s ease;
+      transition: background-color 0.12s ease,
+      transform 0.12s ease;
 
       &:hover {
         background-color: rgb(255 255 255 / 8%);
@@ -230,9 +231,8 @@
       border-bottom: 1px dashed rgb(157 166 255 / 55%);
       color: #aeb7ff;
       font-weight: 700;
-      transition:
-        color 0.12s ease,
-        border-color 0.12s ease;
+      transition: color 0.12s ease,
+      border-color 0.12s ease;
 
       &:hover {
         color: #c9ceff;
@@ -266,9 +266,8 @@
       border-radius: 10px;
       color: #f1f1f1;
       font-size: 0.95rem;
-      transition:
-        border-color 0.12s ease,
-        box-shadow 0.12s ease;
+      transition: border-color 0.12s ease,
+      box-shadow 0.12s ease;
 
       &:focus {
         border-color: rgb(157 166 255 / 50%);
@@ -321,10 +320,9 @@
       color: #e6e8ff;
       font-weight: 800;
       cursor: pointer;
-      transition:
-        background-color 0.12s ease,
-        transform 0.12s ease,
-        border-color 0.12s ease;
+      transition: background-color 0.12s ease,
+      transform 0.12s ease,
+      border-color 0.12s ease;
 
       &:hover {
         background-color: #323654;
