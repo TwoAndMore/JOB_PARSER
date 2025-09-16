@@ -798,7 +798,8 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
           <div className="kanban__hint">Clear search to drag & drop</div>
         )}
 
-        {/* ADD button */}
+        <div className="kanban__brand">Discord: amiduck</div>
+
         <button
           type="button"
           onClick={openCreate}
@@ -807,8 +808,6 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
         >
           <FaPlus style={{marginRight: 6}} /> Add
         </button>
-
-        <div className="kanban__brand">Discord: amiduck</div>
       </div>
 
       {/* Loading & error states */}
