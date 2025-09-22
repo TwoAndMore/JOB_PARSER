@@ -17,10 +17,7 @@ import {
 import './KanbanBoard.scss';
 import KanbanCard from '../KanbanCard/KanbanCard';
 import Modal from '../Modal/Modal';
-import NewJobModal, {
-  type ColumnName as ModalColumnName,
-  type Job as EditJob,
-} from '../NewJobModal/NewJobModal';
+import NewJobModal, {type ColumnName as ModalColumnName, type Job as EditJob,} from '../NewJobModal/NewJobModal';
 
 /* ========== Types ========== */
 
@@ -37,6 +34,7 @@ type Job = {
   'Interview Date'?: string;
   Contacts?: string;
   Tag?: string;
+  Source: string;
   _row?: number; // 1-based sheet row
 };
 
@@ -160,6 +158,7 @@ const SortableItem = React.memo(function SortableItem({
         tag={job.Tag}
         link={job.Link}
         highlight={highlight}
+        source={job.Source}
         hasNotes={Boolean(job.Notes && job.Notes.trim())}
         onClick={() => onClick(job)}
       />
@@ -803,6 +802,13 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
 
         <div className="kanban__brand">Discord: amiduck</div>
 
+        <div className="kanban__goal" title="Let’s get it to 500">
+          <span className="kanban__goal-emoji">🏆</span>
+          <span className="kanban__goal-text">
+            Can you make it to <strong>500?</strong>
+          </span>
+        </div>
+
         <button
           type="button"
           onClick={openCreate}
@@ -911,6 +917,7 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
                           link={currentJob.Link}
                           tag={currentJob.Tag}
                           highlight={query}
+                          source={currentJob.Source}
                           hasNotes={Boolean(currentJob.Notes && currentJob.Notes.trim())}
                           onClick={() => {
                             setSelectedJob(currentJob);

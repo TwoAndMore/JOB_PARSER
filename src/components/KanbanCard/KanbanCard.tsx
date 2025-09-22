@@ -13,16 +13,17 @@ type Props = {
   readonly id: string;
   readonly title: string;
   readonly company?: string;
-  readonly date?: string; // DD.MM.YYYY (також підтримує DD-MM-YYYY / DD/MM/YYYY)
+  readonly date?: string; // DD.MM.YYYY (толерує -, /)
   readonly location?: string;
   readonly link?: string;
   readonly tag?: string;
+  readonly source?: string;
   readonly onClick?: () => void;
   readonly highlight?: string;
   readonly hasNotes?: boolean;
 };
 
-/** Парсинг "DD.MM.YYYY" (толерує -, /) у Date або null */
+/** Парсинг "DD.MM.YYYY" у Date або null */
 const parseDDMMYYYY = (src?: string): Date | null => {
   if (!src) return null;
   const m = src.trim().match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
@@ -49,7 +50,6 @@ const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const makeHighlightRegex = (q?: string): RegExp | null => {
   const raw = (q || '').trim().toLowerCase();
   if (!raw) return null;
-
   const tokens = Array.from(
     new Set(
       raw
@@ -58,7 +58,6 @@ const makeHighlightRegex = (q?: string): RegExp | null => {
         .filter(Boolean),
     ),
   ).sort((a, b) => b.length - a.length);
-
   if (!tokens.length) return null;
   return new RegExp(`(${tokens.map(esc).join('|')})`, 'gi');
 };
@@ -86,11 +85,28 @@ const renderWithMark = (text?: string, rx?: RegExp | null): React.ReactNode => {
   return out;
 };
 
+const buildLogoSrc = (source?: string): string | null => {
+  if (!source) {
+    return null;
+  }
+
+  const s = source.trim();
+
+  if (!s) {
+    return null;
+  }
+
+  return `./logos/${source}.png`;
+};
+
 const KanbanCard: React.FC<Props> = React.memo(
-  ({id, title, company, date, location, link, tag, onClick, highlight, hasNotes}) => {
+  ({id, title, company, date, location, link, tag, source, onClick, highlight, hasNotes}) => {
     const recent = useMemo(() => isRecent(date, 2), [date]);
     const rx = useMemo(() => makeHighlightRegex(highlight), [highlight]);
     const isSelf = id.startsWith('self-');
+
+    const logoPath = useMemo(() => buildLogoSrc(source), [source]);
+    const logoLabel = useMemo(() => source?.trim(), [source]);
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLDivElement>) => {
@@ -184,6 +200,13 @@ const KanbanCard: React.FC<Props> = React.memo(
             </div>
           )}
         </div>
+
+        {source?.trim() && (
+          <div className="kanban-card__source" title={`Source: ${source}`}>
+            {logoPath && <img className="kanban-card__source-logo" src={logoPath} />}
+            {logoLabel && <span className="kanban-card__source-text">{logoLabel}</span>}
+          </div>
+        )}
       </div>
     );
   },
