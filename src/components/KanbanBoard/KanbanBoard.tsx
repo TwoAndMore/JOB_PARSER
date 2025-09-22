@@ -17,7 +17,10 @@ import {
 import './KanbanBoard.scss';
 import KanbanCard from '../KanbanCard/KanbanCard';
 import Modal from '../Modal/Modal';
-import NewJobModal, {type ColumnName as ModalColumnName, type Job as EditJob,} from '../NewJobModal/NewJobModal';
+import NewJobModal, {
+  type ColumnName as ModalColumnName,
+  type Job as EditJob,
+} from '../NewJobModal/NewJobModal';
 
 /* ========== Types ========== */
 
@@ -55,8 +58,8 @@ const COLUMN_NAMES = [
   'FOLLOWED UP',
   'INTERVIEW',
   'REFUSAL',
-  'OFFER',
   'ARCHIVE',
+  'OFFER',
 ] as const;
 
 type ColumnName = (typeof COLUMN_NAMES)[number];
@@ -207,8 +210,8 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
           'FOLLOWED UP': parsed['FOLLOWED UP'] ?? 'none',
           INTERVIEW: parsed.INTERVIEW ?? 'none',
           REFUSAL: parsed.REFUSAL ?? 'none',
-          OFFER: parsed.OFFER ?? 'none',
           ARCHIVE: parsed.ARCHIVE ?? 'none',
+          OFFER: parsed.OFFER ?? 'none',
         };
       } catch {
         /* ignore */
@@ -220,8 +223,8 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
       'FOLLOWED UP': 'none',
       INTERVIEW: 'none',
       REFUSAL: 'none',
-      OFFER: 'none',
       ARCHIVE: 'none',
+      OFFER: 'none',
     };
   });
 
@@ -808,6 +811,12 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
         >
           <FaPlus style={{marginRight: 6}} /> Add
         </button>
+
+        <img
+          src="./for-you-cat-flower.gif"
+          alt="Computer man"
+          style={{height: '50px', position: 'absolute', right: 0, top: 0}}
+        />
       </div>
 
       {/* Loading & error states */}
@@ -916,8 +925,8 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
                         {renderAction('FOLLOWED UP', 'FOLLOWED UP', <FaRedoAlt />)}
                         {renderAction('INTERVIEW', 'INTERVIEW', <FaPhoneAlt />)}
                         {renderAction('REFUSAL', 'REFUSAL', <FaTimesCircle />)}
-                        {renderAction('OFFER', 'OFFER', <FaBriefcase />)}
                         {renderAction('ARCHIVE', 'ARCHIVE', <FaArchive />)}
+                        {renderAction('OFFER', 'OFFER', <FaBriefcase />)}
                       </div>
 
                       {/* Navigation */}
