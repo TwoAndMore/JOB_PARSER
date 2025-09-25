@@ -116,9 +116,10 @@
           border: 1px solid rgb(255 255 255 / 18%);
           border-radius: 999px;
           box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
-          transition: background-color 0.18s ease,
-          border-color 0.18s ease,
-          box-shadow 0.18s ease;
+          transition:
+            background-color 0.18s ease,
+            border-color 0.18s ease,
+            box-shadow 0.18s ease;
         }
 
         &-thumb {
@@ -128,8 +129,9 @@
           height: 24px;
           background-color: #e9ebff;
           border-radius: 50%;
-          box-shadow: 0 1px 2px rgb(0 0 0 / 35%),
-          0 0 0 1px rgb(255 255 255 / 35%) inset;
+          box-shadow:
+            0 1px 2px rgb(0 0 0 / 35%),
+            0 0 0 1px rgb(255 255 255 / 35%) inset;
           transition: transform 0.18s ease;
           will-change: transform;
         }
@@ -140,8 +142,9 @@
 
         .kanban__toggle-input:focus-visible + .kanban__toggle-track {
           outline: none;
-          box-shadow: 0 0 0 3px rgb(157 166 255 / 28%),
-          inset 0 1px 0 rgb(255 255 255 / 6%);
+          box-shadow:
+            0 0 0 3px rgb(157 166 255 / 28%),
+            inset 0 1px 0 rgb(255 255 255 / 6%);
         }
 
         .kanban__toggle-input:checked + .kanban__toggle-track {
@@ -223,9 +226,10 @@
     background-color: var(--col-bg);
     border: 1px solid var(--stroke);
     border-radius: 14px;
-    transition: background-color 0.15s,
-    border-color 0.15s,
-    transform 0.15s;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      transform 0.15s;
 
     &:hover {
       background-color: var(--col-bg-hover);
@@ -435,9 +439,10 @@
     border-radius: 10px;
     cursor: pointer;
     user-select: none;
-    transition: border-color 0.15s,
-    background-color 0.15s,
-    transform 0.05s;
+    transition:
+      border-color 0.15s,
+      background-color 0.15s,
+      transform 0.05s;
 
     &:hover {
       background-color: #23273a;
@@ -493,10 +498,11 @@
     border: 1px solid rgb(255 255 255 / 16%);
     border-radius: 10px;
     cursor: pointer;
-    transition: background-color 0.12s ease,
-    transform 0.06s ease,
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
+    transition:
+      background-color 0.12s ease,
+      transform 0.06s ease,
+      border-color 0.12s ease,
+      box-shadow 0.12s ease;
 
     &:hover {
       background-color: #323654;
@@ -656,30 +662,32 @@
 
   border-radius: 999px;
   border: 1px solid rgba(255, 245, 214, 0.55);
-  background: radial-gradient(120% 100% at 10% 10%, var(--gold-1) 0%, transparent 35%),
-  linear-gradient(135deg, var(--gold-2), var(--gold-3) 55%, var(--gold-4));
+  background:
+    radial-gradient(120% 100% at 10% 10%, var(--gold-1) 0%, transparent 35%),
+    linear-gradient(135deg, var(--gold-2), var(--gold-3) 55%, var(--gold-4));
   color: var(--text-dark);
   font-weight: 900;
   letter-spacing: 0.2px;
   white-space: nowrap;
 
-  box-shadow: 0 2px 10px var(--gold-glow),
-  inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 2px 10px var(--gold-glow),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 
   overflow: hidden;
   isolation: isolate; // щоб псевдо-елементи не змішувались із сусідами
 
   /* sweeping shine */
   &::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: -40% -120%;
     background: linear-gradient(
-        75deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.65) 8%,
-        rgba(255, 255, 255, 0.15) 12%,
-        transparent 20%
+      75deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.65) 8%,
+      rgba(255, 255, 255, 0.15) 12%,
+      transparent 20%
     );
     transform: translateX(-60%);
     animation: goalShine 3.25s ease-in-out infinite;
@@ -689,12 +697,13 @@
 
   /* tiny sparkles */
   &::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(3px 3px at 18% 40%, rgba(255, 255, 255, 0.9) 0, transparent 60%),
-    radial-gradient(2px 2px at 68% 30%, rgba(255, 255, 255, 0.8) 0, transparent 60%),
-    radial-gradient(2.5px 2.5px at 80% 70%, rgba(255, 255, 255, 0.75) 0, transparent 60%);
+    background:
+      radial-gradient(3px 3px at 18% 40%, rgba(255, 255, 255, 0.9) 0, transparent 60%),
+      radial-gradient(2px 2px at 68% 30%, rgba(255, 255, 255, 0.8) 0, transparent 60%),
+      radial-gradient(2.5px 2.5px at 80% 70%, rgba(255, 255, 255, 0.75) 0, transparent 60%);
     opacity: 0.7;
     animation: goalTwinkle 6s linear infinite;
     pointer-events: none;
@@ -703,8 +712,9 @@
 
   /* focus/hover polish */
   &:hover {
-    box-shadow: 0 6px 20px var(--gold-glow),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+    box-shadow:
+      0 6px 20px var(--gold-glow),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.45);
     transform: translateY(-1px);
   }
 
@@ -715,9 +725,10 @@
 
   /* keyboard focus ring */
   &:focus-within {
-    box-shadow: 0 0 0 3px var(--gold-ring),
-    0 10px 28px var(--gold-glow),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    box-shadow:
+      0 0 0 3px var(--gold-ring),
+      0 10px 28px var(--gold-glow),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   }
 
   &-emoji {
@@ -777,7 +788,8 @@
 }
 
 @keyframes goalTwinkle {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.65;
     filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.45));
   }
@@ -792,10 +804,15 @@
 }
 
 @keyframes goalPulse {
-  0%, 100% {
-    box-shadow: 0 2px 10px rgba(255, 184, 46, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  0%,
+  100% {
+    box-shadow:
+      0 2px 10px rgba(255, 184, 46, 0.25),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.35);
   }
   50% {
-    box-shadow: 0 10px 28px rgba(255, 184, 46, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    box-shadow:
+      0 10px 28px rgba(255, 184, 46, 0.5),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   }
 }

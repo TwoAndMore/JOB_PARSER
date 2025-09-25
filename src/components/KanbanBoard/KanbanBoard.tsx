@@ -17,7 +17,10 @@ import {
 import './KanbanBoard.scss';
 import KanbanCard from '../KanbanCard/KanbanCard';
 import Modal from '../Modal/Modal';
-import NewJobModal, {type ColumnName as ModalColumnName, type Job as EditJob,} from '../NewJobModal/NewJobModal';
+import NewJobModal, {
+  type ColumnName as ModalColumnName,
+  type Job as EditJob,
+} from '../NewJobModal/NewJobModal';
 
 /* ========== Types ========== */
 
@@ -802,10 +805,10 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
 
         <div className="kanban__brand">Discord: amiduck</div>
 
-        <div className="kanban__goal" title="Let’s get it to 500">
+        <div className="kanban__goal" title="Let’s get it to 250">
           <span className="kanban__goal-emoji">🏆</span>
           <span className="kanban__goal-text">
-            Can you make it to <strong>500?</strong>
+            Can you make it to <strong>250?</strong>
           </span>
         </div>
 

@@ -39,12 +39,15 @@
   background-color: #202331;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 14px;
-  box-shadow: 0 20px 50px rgb(0 0 0 / 55%),
-  0 0 0 1px rgb(157 166 255 / 6%) inset;
+  box-shadow:
+    0 20px 50px rgb(0 0 0 / 55%),
+    0 0 0 1px rgb(157 166 255 / 6%) inset;
   color: #f1f1f1;
 
   /* interaction */
-  transition: transform 0.16s ease, opacity 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    opacity 0.16s ease;
 
   &__header {
     /* position */
@@ -110,8 +113,9 @@
 
     /* interaction */
     cursor: pointer;
-    transition: background-color 0.12s ease,
-    transform 0.12s ease;
+    transition:
+      background-color 0.12s ease,
+      transform 0.12s ease;
 
     &:hover {
       background-color: rgb(255 255 255 / 8%);
@@ -192,8 +196,9 @@
     font-size: 0.95rem;
 
     /* interaction */
-    transition: border-color 0.12s ease,
-    box-shadow 0.12s ease;
+    transition:
+      border-color 0.12s ease,
+      box-shadow 0.12s ease;
 
     &::placeholder {
       color: #8f96b3;
@@ -251,9 +256,10 @@
 
     /* interaction */
     cursor: pointer;
-    transition: background-color 0.12s ease,
-    transform 0.12s ease,
-    border-color 0.12s ease;
+    transition:
+      background-color 0.12s ease,
+      transform 0.12s ease,
+      border-color 0.12s ease;
 
     &:hover {
       background-color: #323654;
