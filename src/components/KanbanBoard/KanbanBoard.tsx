@@ -17,10 +17,7 @@ import {
 import './KanbanBoard.scss';
 import KanbanCard from '../KanbanCard/KanbanCard';
 import Modal from '../Modal/Modal';
-import NewJobModal, {
-  type ColumnName as ModalColumnName,
-  type Job as EditJob,
-} from '../NewJobModal/NewJobModal';
+import NewJobModal, {type ColumnName as ModalColumnName, type Job as EditJob,} from '../NewJobModal/NewJobModal';
 
 /* ========== Types ========== */
 
@@ -280,6 +277,8 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
           return;
         }
 
+        const DATA_START_ROW = 424;
+
         const rawHeaders = data.values[0] as string[];
         const headers = rawHeaders.map((s) => s.replace(/^\uFEFF/, '').trim());
         const canonicalKey = (h: string): keyof RowObject => {
@@ -289,14 +288,17 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
           return h as keyof RowObject;
         };
 
-        const rows = data.values.slice(1);
+        const startIndex = Math.max(DATA_START_ROW - 1, 1);
+        const rows = data.values.slice(startIndex) || [];
         const jobs: Job[] = rows.map((row, i) => {
           const obj: RowObject = {};
           headers.forEach((h, j) => {
             const key = canonicalKey(h);
             obj[key] = row[j] ?? '';
           });
-          obj._row = i + 2;
+
+          obj._row = DATA_START_ROW + i;
+
           return obj as Job;
         });
 
@@ -452,8 +454,9 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
       );
       setSelectedJob((sj) => (sj && sj.ID === updatedJob.ID ? {...sj, ...updatedJob} : sj));
 
-      if (!updatedJob.ID.startsWith('self-') && updatedJob._row) {
+      if (updatedJob._row) {
         const params = new URLSearchParams({
+          action: 'update',
           row: String(updatedJob._row),
           notes: updatedJob.Notes || '',
           interviewDate: updatedJob['Interview Date'] || '',
@@ -768,23 +771,41 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
   return (
     <div className="kanban-page">
       {/* Header */}
-      <div className="kanban__header" style={{gap: '0.5rem', flexWrap: 'wrap'}}>
-        <div className="kanban__brand">JOB PARSER</div>
-
-        <div className="kanban__search">
-          <FaSearch className="kanban__search-icon" />
-          <input
-            className="kanban__search-input"
-            type="text"
-            placeholder="Search title, company, location..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+      <header className="kanban__header">
+        {/* left */}
+        <div className="kanban__header-left">
+          <div className="kanban__brand">JOB PARSER</div>
+          <div className="kanban__brand kanban__brand--alt">Discord: amiduck</div>
         </div>
 
-        {/* Fancy toggle switch (styled in SCSS) */}
-        <div className="kanban__controls">
-          <label className="kanban__toggle">
+        <div className="kanban__header-center">
+          <div className="kb-search" role="search">
+            <FaSearch className="kb-search__icon" aria-hidden="true" />
+            <input
+              className="kb-search__input"
+              type="text"
+              placeholder="Search title, company, location, tag…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search jobs"
+            />
+            {query.trim().length > 0 && (
+              <button
+                type="button"
+                className="kb-search__clear"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                title="Clear"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* right */}
+        <div className="kanban__header-right">
+          <label className="kanban__toggle" title="Focus mode">
             <input
               className="kanban__toggle-input"
               type="checkbox"
@@ -795,38 +816,33 @@ const KanbanBoard: React.FC<Props> = ({apiKey, spreadsheetId, range}) => {
             <span className="kanban__toggle-track" aria-hidden="true">
               <span className="kanban__toggle-thumb" />
             </span>
-            <span className="kanban__toggle-text">Focus mode</span>
+            <span className="kanban__toggle-text">Focus</span>
           </label>
+
+          <div className="kanban__goal" title="Let’s get it to 250">
+            <span className="kanban__goal-emoji">🏆</span>
+            <span className="kanban__goal-text">
+              Can you make it to <strong>250?</strong>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={openCreate}
+            title="Add new job"
+            className="kanban__add-btn"
+          >
+            <FaPlus style={{marginRight: 6}} /> Add
+          </button>
+
+          <img
+            src="./for-you-cat-flower.gif"
+            alt=""
+            className="kanban__header-gif"
+            aria-hidden="true"
+          />
         </div>
-
-        {!focusMode && query.trim().length > 0 && (
-          <div className="kanban__hint">Clear search to drag & drop</div>
-        )}
-
-        <div className="kanban__brand">Discord: amiduck</div>
-
-        <div className="kanban__goal" title="Let’s get it to 250">
-          <span className="kanban__goal-emoji">🏆</span>
-          <span className="kanban__goal-text">
-            Can you make it to <strong>250?</strong>
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={openCreate}
-          title="Add new job"
-          style={btnStyle({primary: true})}
-        >
-          <FaPlus style={{marginRight: 6}} /> Add
-        </button>
-
-        <img
-          src="./for-you-cat-flower.gif"
-          alt="Computer man"
-          style={{height: '50px', position: 'absolute', right: 0, top: 0}}
-        />
-      </div>
+      </header>
 
       {/* Loading & error states */}
       {isLoading ? (

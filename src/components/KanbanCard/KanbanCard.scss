@@ -1,35 +1,46 @@
+/* =========================
+   KanbanCard — FULL SCSS (fix: badges not clipped)
+   ========================= */
 .kanban-card {
-  --bg1: #2b2f47;
-  --bg2: #3a3f63;
-  --bg1-hover: #3a3f63;
-  --bg2-hover: #2b2f47;
-  --border: rgb(255 255 255 / 8%);
-  --border-hover: rgb(127 140 255 / 25%);
-  --ring: rgb(127 140 255 / 18%);
+  /* base palette */
+  --bg-1: #1b1f34;
+  --bg-2: #222743;
+  --ink: #fff;
+  --ink-soft: #e6e8ff;
+  --ink-muted: #cfd2ff;
+
+  --brand-1: #9da6ff;
+  --ring: rgba(157, 166, 255, 0.22);
+
+  /* self palette (recolor whole card) */
+  --self-1: #12353a;
+  --self-2: #184d4f;
+  --self-ring: rgba(83, 255, 211, 0.22);
 
   position: relative;
   display: grid;
-  gap: 0.6rem;
+  grid-template-rows: auto auto;
+  gap: 0.75rem;
 
   margin: 0;
-  padding: 0.9rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  padding: 0.9rem;
+  border-radius: 16px;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
 
-  background-color: var(--bg1);
-  background-image: linear-gradient(135deg, var(--bg1), var(--bg2));
-  box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
-  color: #fff;
+  border: 1px solid transparent;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
-  cursor: grab;
+  isolation: isolate;
   user-select: none;
+  cursor: grab;
+
+  /* ✅ allow badges to stick out of the card */
+  overflow: visible;
 
   &:hover {
     transform: translateY(-1px);
-    background-color: var(--bg1-hover);
-    background-image: linear-gradient(135deg, var(--bg1-hover), var(--bg2-hover));
-    border-color: var(--border-hover);
-    box-shadow: 0 6px 22px rgb(0 0 0 / 45%);
   }
 
   &:active {
@@ -38,37 +49,113 @@
   }
 
   &:focus-within {
-    border-color: var(--border-hover);
-    box-shadow:
-      0 0 0 3px var(--ring),
-      0 6px 22px rgb(0 0 0 / 45%);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ring),
+    0 16px 36px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
-  /* self-created modifier */
+  /* decorative layers */
+  &__border {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(165, 172, 255, .28), rgba(255, 255, 255, .08)) border-box;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0) border-box;
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0) border-box;
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+    border: 1px solid transparent;
+    z-index: -1;
+  }
+
+  &__sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    pointer-events: none;
+    background: radial-gradient(120% 90% at 0% 0%, rgba(157, 166, 255, .12), transparent 60%),
+    radial-gradient(90% 70% at 100% 10%, rgba(110, 120, 255, .08), transparent 60%);
+    z-index: -2;
+  }
+
+  &__noise {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    pointer-events: none;
+    opacity: .07;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.6'/></svg>");
+    background-size: 240px 240px;
+    z-index: -3;
+  }
+
+  /* SELF VARIANT — recolor whole card */
   &.kanban-card--self {
-    --bg1: #284252;
-    --bg2: #3a7b7b;
-    --bg1-hover: #3a7b7b;
-    --bg2-hover: #284252;
-    --border: rgba(72 255 212 / 22%);
-    --border-hover: rgba(72 255 212 / 38%);
-    --ring: rgba(72 255 212 / 20%);
+    background: linear-gradient(180deg, var(--self-1), var(--self-2));
 
-    box-shadow:
-      0 2px 10px rgb(0 0 0 / 25%),
-      0 0 0 1px rgba(72 255 212 / 10%) inset;
+    .kanban-card__border {
+      background: linear-gradient(135deg, rgba(83, 255, 211, 0.35), rgba(255, 255, 255, 0.08)) border-box;
+    }
+
+    .kanban-card__sheen {
+      background: radial-gradient(120% 90% at 0% 0%, rgba(83, 255, 211, 0.14), transparent 60%),
+      radial-gradient(90% 70% at 100% 10%, rgba(83, 255, 211, 0.1), transparent 60%);
+    }
+
+    &:focus-within {
+      box-shadow: 0 0 0 3px var(--self-ring);
+    }
+
+    .kanban-card__subtitle-icon {
+      color: #9af7e6;
+    }
+
+    .kanban-card__foot-icon {
+      color: #7cf4df;
+    }
   }
 
-  /* top row (title + external link) */
-  &__top {
-    position: relative;
+  /* HEADER */
+  &__header {
     display: grid;
-    grid-template-columns: 1fr 32px;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 0.7rem;
     align-items: start;
-    gap: 0.5rem;
-    margin: 0;
-    padding: 0;
     min-width: 0;
+  }
+
+  &__avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #2b3052, #1f243c);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  &__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 6px;
+  }
+
+  &__avatar-fallback {
+    font-weight: 900;
+    font-size: 0.98rem;
+    letter-spacing: 0.2px;
+    opacity: 0.9;
+  }
+
+  &__head-body {
+    min-width: 0;
+    display: grid;
+    gap: 0.45rem;
   }
 
   &__mark {
@@ -76,315 +163,292 @@
     color: #111321;
     padding: 0 0.06em;
     border-radius: 3px;
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 8%) inset;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .08) inset;
   }
 
   &__title {
-    display: -webkit-box;
     margin: 0;
-    padding: 0;
-    min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    word-break: break-word;
     color: #fff;
-    font-size: 0.98rem;
+    font-size: .98rem;
     font-weight: 800;
     line-height: 1.25;
-    letter-spacing: 0.2px;
-    -webkit-line-clamp: 2;
+    letter-spacing: .2px;
+  }
+
+  /* Subtitle rows */
+  &__subtitle {
+    display: grid;
+    grid-auto-rows: minmax(28px, auto);
+    gap: .35rem;
+    min-width: 0;
+  }
+
+  &__subtitle-item {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: .3rem .55rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .1);
+    box-sizing: border-box;
+  }
+
+  &__subtitle-icon {
+    font-size: .9rem;
+    color: var(--brand-1);
+    flex: 0 0 auto;
+    margin-top: .02rem;
+  }
+
+  &__subtitle-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--ink-soft);
+    font-weight: 700;
+    letter-spacing: .2px;
+    font-size: .85rem;
+    display: -webkit-box;
     -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     overflow: hidden;
+    white-space: normal;
     text-overflow: ellipsis;
     word-break: break-word;
     overflow-wrap: anywhere;
-    hyphens: auto;
   }
 
-  &__link {
-    display: inline-grid;
-    place-items: center;
-    margin: 0;
-    padding: 0;
-    width: 28px;
-    height: 28px;
-    border: 1px solid rgb(157 166 255 / 18%);
-    border-radius: 8px;
-    background-color: rgb(157 166 255 / 9%);
-    color: #cfd2ff;
-    transition:
-      transform 0.12s ease,
-      background-color 0.2s ease,
-      color 0.2s ease,
-      border-color 0.2s ease;
-
-    &:hover {
-      transform: scale(1.06);
-      background-color: rgb(157 166 255 / 18%);
-      border-color: rgb(157 166 255 / 35%);
-      color: #fff;
-    }
+  &__dot {
+    display: none !important;
   }
 
-  /* company chip row */
-  &__chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    margin: 0;
-    padding: 0;
-    min-width: 0;
-  }
-
-  &__chip {
+  /* Tag */
+  &__tag {
+    justify-self: start;
     display: inline-flex;
-    align-items: flex-start;
-    gap: 0.4rem;
-    margin: 0;
-    padding: 0.32rem 0.6rem;
-    border: 1px solid #3a3d65;
-    border-radius: 999px;
-    background-color: #2e3150;
-    color: #cfd2ff;
-    font-size: 0.82rem;
-    font-weight: 700;
+    align-items: center;
+    gap: 0.45rem;
+
+    /* як у subtitle-item */
+    min-height: 30px;
+    padding: 0.34rem 0.65rem;
+    border-radius: 10px;
+
+    /* фірмовий (пісочно-помаранчевий) стиль */
+    background: rgba(255, 191, 91, 0.16);
+    border: 1px solid rgba(255, 191, 91, 0.50);
+    box-shadow: 0 2px 10px rgba(255, 191, 91, 0.12);
+
+    /* читабельність */
+    color: #ffdca3;
+    font-size: 0.85rem;
     letter-spacing: 0.2px;
-    line-height: 1.2;
+    line-height: 1;
+
+    /* без зламу макета */
     max-width: 100%;
+    margin-top: 0.2rem;
   }
 
-  &__chip-icon {
+  &__tag-icon {
     flex: 0 0 auto;
-    margin-top: 0.05rem;
-    font-size: 0.9rem;
-    opacity: 0.9;
+    font-size: 1rem;
+    color: #ffbf5b;
+    margin-top: 0.02rem; /* візуальний центр */
   }
 
-  &__chip-text {
+  &__tag-text {
     flex: 1 1 auto;
     min-width: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: normal;
   }
 
-  /* badges (absolute) */
+  /* Link button */
+  &__linkbtn {
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: rgba(157, 166, 255, .12);
+    border: 1px solid rgba(157, 166, 255, .28);
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: transform .12s ease, background-color .18s ease, border-color .18s ease, color .18s ease;
+  }
+
+  &__linkbtn:hover,
+  &__linkbtn:focus-visible {
+    transform: translateY(-1px);
+    background: rgba(157, 166, 255, .22);
+    border-color: rgba(157, 166, 255, .5);
+    color: #fff;
+    outline: none;
+  }
+
+  /* FOOTER — only date */
+  &__footer {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    gap: .5rem;
+    align-items: center;
+    justify-content: start;
+    padding: .45rem .55rem;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .04));
+    border: 1px solid rgba(255, 255, 255, .1);
+  }
+
+  &__foot-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-width: 0;
+  }
+
+  &__foot-icon {
+    font-size: .9rem;
+    color: var(--brand-1);
+  }
+
+  &__foot-text {
+    color: #e9eaff;
+    font-size: .82rem;
+    letter-spacing: .2px;
+    white-space: nowrap;
+  }
+
+  /* BADGES (NEW + paperclip) */
   &__badge-abs {
     position: absolute;
     top: -8px;
     left: -8px;
-    z-index: 2;
-    pointer-events: none;
-    padding: 0.28rem 0.5rem;
-    border: 1px solid rgb(255 255 255 / 25%);
+    z-index: 3;
+    padding: .28rem .5rem;
     border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, .25);
     background-image: linear-gradient(135deg, #5cffb4, #25e39b);
     color: #0f1720;
-    font-size: 0.72rem;
+    font-size: .72rem;
     font-weight: 900;
-    letter-spacing: 0.3px;
-    line-height: 1;
+    letter-spacing: .3px;
     text-transform: uppercase;
-    white-space: nowrap;
-    box-shadow:
-      0 2px 8px rgb(0 0 0 / 35%),
-      inset 0 0 0 1px rgb(0 0 0 / 6%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(0, 0, 0, .06);
+
+    /* не перекриває кліки по картці */
+    pointer-events: none;
+  }
+
+  .kanban-card[data-recent='1'] &__badge-abs {
+    overflow: hidden;
+  }
+
+  .kanban-card[data-recent='1'] &__badge-abs:after {
+    content: '';
+    position: absolute;
+    inset: -60% -120%;
+    background: linear-gradient(75deg, transparent 0%, rgba(255, 255, 255, .7) 10%, rgba(255, 255, 255, .2) 14%, transparent 22%);
+    transform: translateX(-60%);
+    animation: kbShine 2.8s ease-in-out infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
   }
 
   &__badge-abs--notes {
     right: -8px;
     left: auto;
     top: -8px;
-
     display: inline-grid;
     place-items: center;
     width: 26px;
     height: 26px;
     padding: 0;
-
     border-radius: 999px;
     background-color: #c9cffd;
-    background-image: none;
     color: #111321;
-    border: 1px solid rgb(255 255 255 / 28%);
-    box-shadow:
-      0 2px 8px rgb(0 0 0 / 35%),
-      inset 0 0 0 1px rgb(0 0 0 / 6%);
+    border: 1px solid rgba(255, 255, 255, .28);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(0, 0, 0, .06);
+    pointer-events: none; /* теж не блокує кліки */
   }
 
   &__badge-icon {
-    font-size: 0.9rem;
+    font-size: .9rem;
     line-height: 1;
   }
 
-  /* meta row */
-  &__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.55rem;
-    margin: 0.15rem 0 0;
-    padding: 0;
-    min-width: 0;
-  }
-
-  &__meta-item {
-    display: inline-flex;
-    align-items: flex-start;
-    gap: 0.4rem;
-    margin: 0;
-    padding: 0.38rem 0.6rem;
-    border: 1px solid rgb(255 255 255 / 6%);
-    border-radius: 12px;
-    background-color: rgb(0 0 0 / 18%);
-    line-height: 1.2;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  &__meta-icon {
-    flex: 0 0 auto;
-    margin-top: 0.05rem;
-    font-size: 0.95rem;
-    color: #9da6ff;
-  }
-
-  &__meta-text {
-    margin: 0;
-    padding: 0;
-    max-width: 24ch;
-    color: #e9eaff;
-    font-size: 0.82rem;
-    letter-spacing: 0.2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__meta-text--wrap {
-    display: -webkit-box;
-    max-width: 100%;
-    white-space: normal;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  /* Tag theming */
-  --tag-bg: rgb(255 181 72 / 16%);
-  --tag-border: rgb(255 181 72 / 38%);
-  --tag-fg: #ffdca3;
-  --tag-icon: #ffbf5b;
-  --tag-glow: rgb(255 181 72 / 18%);
-
-  &__meta-item--tag {
-    background-color: var(--tag-bg);
-    border-color: var(--tag-border);
-    box-shadow:
-      0 0 0 1px var(--tag-border) inset,
-      0 2px 10px var(--tag-glow);
-
-    .kanban-card__meta-icon {
-      color: var(--tag-icon);
-    }
-
-    .kanban-card__meta-text {
-      color: var(--tag-fg);
-      max-width: 28ch;
-    }
-  }
-
-  &__source {
-    position: absolute;
-    right: -12px;
-    bottom: -8px;
-    z-index: 2;
-    pointer-events: none;
-
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-
-    padding: 0.32rem 0.5rem;
-
-    border: 1px solid rgb(255 255 255 / 22%);
-    border-radius: 10px;
-    background-image: linear-gradient(135deg, #1b1f31, #2a2f49);
-    box-shadow:
-      0 2px 8px rgb(0 0 0 / 35%),
-      inset 0 0 0 1px rgb(0 0 0 / 8%);
-  }
-
-  &__source-logo {
-    width: 16px;
-    height: 16px;
+  /* highlight <mark> (dup kept for safety) */
+  &__mark {
+    background-color: #ffe58f;
+    color: #111321;
+    padding: 0 0.06em;
     border-radius: 3px;
-    display: block;
-    object-fit: contain;
-  }
-
-  &__source-text {
-    max-width: 16ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    color: #cfd2ff;
-    font-size: 0.75rem;
-    letter-spacing: 0.2px;
-    font-weight: 800;
-  }
-
-  &.kanban-card--self {
-    .kanban-card__source {
-      border-color: rgba(72 255 212 / 30%);
-      background-image: linear-gradient(135deg, #17333a, #234a4a);
-    }
-
-    .kanban-card__source-text {
-      color: #c7ffee;
-    }
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .08) inset;
   }
 }
 
-/* mobile */
+/* keyframes */
+@keyframes kbShine {
+  0% {
+    transform: translateX(-60%) rotate(0.001deg);
+  }
+  55% {
+    transform: translateX(75%) rotate(0.001deg);
+  }
+  100% {
+    transform: translateX(75%) rotate(0.001deg);
+  }
+}
+
+/* mobile tweaks: allow up to 3 lines in subtitle */
 @media (width <= 420px) {
   .kanban-card {
-    padding: 0.75rem 0.7rem;
-    border-radius: 12px;
+    padding: 0.8rem;
+    border-radius: 14px;
+    gap: 0.65rem;
+
+    &__header {
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      gap: 0.6rem;
+    }
+
+    &__avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+    }
 
     &__title {
-      font-size: 0.95rem;
+      font-size: 0.96rem;
+      -webkit-line-clamp: 3;
     }
 
-    &__chip {
+    &__subtitle {
+      gap: 0.3rem;
+    }
+
+    &__subtitle-item {
+      min-height: 30px;
+      padding: 0.26rem 0.5rem;
+    }
+
+    &__subtitle-text {
+      font-size: 0.82rem;
+      -webkit-line-clamp: 3;
+    }
+
+    &__foot-text {
       font-size: 0.8rem;
-    }
-
-    &__chip-text {
-      -webkit-line-clamp: 3;
-    }
-
-    &__meta-text--wrap {
-      -webkit-line-clamp: 3;
-    }
-
-    &__meta-text {
-      font-size: 0.78rem;
-    }
-
-    &__source {
-      right: -6px;
-      bottom: -6px;
-      padding: 0.28rem 0.45rem;
-    }
-
-    &__source-text {
-      max-width: 12ch;
-      font-size: 0.72rem;
-    }
-
-    &__source-logo {
-      width: 14px;
-      height: 14px;
     }
   }
 }

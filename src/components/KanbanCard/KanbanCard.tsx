@@ -86,16 +86,9 @@ const renderWithMark = (text?: string, rx?: RegExp | null): React.ReactNode => {
 };
 
 const buildLogoSrc = (source?: string): string | null => {
-  if (!source) {
-    return null;
-  }
-
+  if (!source) return null;
   const s = source.trim();
-
-  if (!s) {
-    return null;
-  }
-
+  if (!s) return null;
   return `./logos/${source}.png`;
 };
 
@@ -128,13 +121,19 @@ const KanbanCard: React.FC<Props> = React.memo(
         onClick={onClick}
         onKeyDown={handleKeyDown}
         aria-label={title}
+        data-recent={recent ? '1' : '0'}
       >
+        {/* decorative layers */}
+        <span className="kanban-card__border" aria-hidden="true" />
+        <span className="kanban-card__sheen" aria-hidden="true" />
+        <span className="kanban-card__noise" aria-hidden="true" />
+
+        {/* badges */}
         {recent && (
           <span className="kanban-card__badge-abs" aria-label="Added in the last 2 days">
             NEW
           </span>
         )}
-
         {hasNotes && (
           <span
             className="kanban-card__badge-abs kanban-card__badge-abs--notes"
@@ -145,68 +144,75 @@ const KanbanCard: React.FC<Props> = React.memo(
           </span>
         )}
 
-        <div className="kanban-card__top">
-          <h3 className="kanban-card__title" title={title}>
-            {renderWithMark(title, rx)}
-          </h3>
+        {/* header */}
+        <div className="kanban-card__header">
+          <div className="kanban-card__avatar" aria-hidden="true">
+            {logoPath ? (
+              <img className="kanban-card__avatar-img" src={logoPath} alt="" />
+            ) : (
+              <span className="kanban-card__avatar-fallback">
+                {(company?.trim()?.[0] || title?.trim()?.[0] || '•').toUpperCase()}
+              </span>
+            )}
+          </div>
+
+          <div className="kanban-card__head-body">
+            <h3 className="kanban-card__title" title={title}>
+              {renderWithMark(title, rx)}
+            </h3>
+
+            {/* FULL-WIDTH subtitle rows (company & location). No dot separator. */}
+            <div
+              className="kanban-card__subtitle"
+              title={[company, location].filter(Boolean).join(' · ')}
+            >
+              {company && (
+                <span className="kanban-card__subtitle-item kanban-card__subtitle-item--company">
+                  <FaBuilding className="kanban-card__subtitle-icon" />
+                  <span className="kanban-card__subtitle-text">{renderWithMark(company, rx)}</span>
+                </span>
+              )}
+
+              {location && (
+                <span className="kanban-card__subtitle-item kanban-card__subtitle-item--location">
+                  <FaMapMarkerAlt className="kanban-card__subtitle-icon" />
+                  <span className="kanban-card__subtitle-text">{location}</span>
+                </span>
+              )}
+            </div>
+
+            {tag?.trim() && (
+              <span className="kanban-card__tag" title={`Tag: ${tag}`}>
+                <FaTag className="kanban-card__tag-icon" />
+                <span className="kanban-card__tag-text">{tag}</span>
+              </span>
+            )}
+          </div>
 
           {link && (
             <a
-              className="kanban-card__link"
+              className="kanban-card__linkbtn"
               href={link}
               title="Open vacancy"
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
+              aria-label="Open vacancy"
             >
               <FaExternalLinkAlt />
             </a>
           )}
         </div>
 
-        <div className="kanban-card__chips">
-          {company && (
-            <span className="kanban-card__chip">
-              <FaBuilding className="kanban-card__chip-icon" />
-              <span className="kanban-card__chip-text">{renderWithMark(company, rx)}</span>
-            </span>
-          )}
-        </div>
-
-        <div className="kanban-card__meta">
-          {location && (
-            <div className="kanban-card__meta-item">
-              <FaMapMarkerAlt className="kanban-card__meta-icon" />
-              <span className="kanban-card__meta-text kanban-card__meta-text--wrap">
-                {location}
-              </span>
-            </div>
-          )}
-
+        {/* footer — ONLY DATE (no site/source text here) */}
+        <div className="kanban-card__footer">
           {date && (
-            <div className="kanban-card__meta-item">
-              <FaCalendarAlt className="kanban-card__meta-icon" />
-              <span className="kanban-card__meta-text">{date}</span>
-            </div>
-          )}
-
-          {tag?.trim() && (
-            <div
-              className="kanban-card__meta-item kanban-card__meta-item--tag"
-              title={`Tag: ${tag}`}
-            >
-              <FaTag className="kanban-card__meta-icon" />
-              <span className="kanban-card__meta-text">{tag}</span>
+            <div className="kanban-card__foot-item">
+              <FaCalendarAlt className="kanban-card__foot-icon" />
+              <span className="kanban-card__foot-text">{date}</span>
             </div>
           )}
         </div>
-
-        {source?.trim() && (
-          <div className="kanban-card__source" title={`Source: ${source}`}>
-            {logoPath && <img className="kanban-card__source-logo" src={logoPath} />}
-            {logoLabel && <span className="kanban-card__source-text">{logoLabel}</span>}
-          </div>
-        )}
       </div>
     );
   },
